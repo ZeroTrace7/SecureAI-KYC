@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# HF Models cache (large files)
+models/
+pretrained_models/
+
+# Uploads (user documents — sensitive)
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.pdf
+!frontend/public/**
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Node (frontend)
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/build/
+
+# Temp files
+temp_ela.jpg
+heatmap.png
+clean.jpg
+*.tmp
+
+# Executables
+tools/*.exe
+

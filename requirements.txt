@@ -1,0 +1,67 @@
+# =============================================
+# SecureAI-KYC — Python Dependencies (Optimized)
+# =============================================
+# Install with: pip install -r requirements.txt
+# =============================================
+# Total model download: ~350 MB (down from ~4 GB)
+# =============================================
+
+# === Core AI / ML ===
+transformers==5.4.0
+torch==2.11.0
+torchvision==0.26.0
+torchaudio==2.11.0
+huggingface-hub==1.8.0
+safetensors==0.7.0
+
+# === Computer Vision ===
+opencv-python==4.13.0.92
+Pillow==12.1.1
+scikit-image==0.26.0
+numpy==2.4.2
+scipy==1.17.1
+
+# === OCR (Primary: EasyOCR, Fallback: Tesseract) ===
+easyocr==1.7.2
+pytesseract==0.3.13
+
+# === QR Code Decoding ===
+pyzbar==0.1.9
+
+# === EXIF Metadata ===
+piexif==1.1.3
+ExifRead==3.5.1
+
+# === Deepfake / Face Detection (single model) ===
+# Uses: dima806/deepfake_vs_real_image_detection (~350 MB)
+# Face extraction: OpenCV Haar cascades (built into opencv-python)
+
+# === Voice Verification (OPTIONAL — disabled by default) ===
+speechbrain==1.0.3
+Resemblyzer==0.1.4
+librosa==0.11.0
+sounddevice==0.5.5
+webrtcvad-wheels==2.0.14
+
+# === Cross-Validation ===
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.27.3
+
+# === Explainability (Gemini API + template fallback) ===
+google-genai>=1.0.0
+
+# === PDF Processing ===
+PyMuPDF==1.27.2.2
+
+# === Backend Framework ===
+fastapi==0.135.2
+uvicorn==0.42.0
+python-multipart==0.0.22
+
+# === Database ===
+SQLAlchemy==2.0.48
+
+# === Utilities ===
+loguru==0.7.3
+python-dotenv==1.2.2
+requests==2.33.0
