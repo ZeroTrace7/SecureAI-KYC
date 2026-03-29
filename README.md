@@ -1,4 +1,6 @@
-
+<<<<<<< HEAD
+# Ai_KYC
+=======
 # 🛡️ SECUREAI-KYC — AI-Powered KYC Document Fraud Detection System
 
 > **An intelligent, multi-agent KYC verification pipeline** that uses AI models for document classification, OCR, deepfake detection, voice verification, and explainable fraud scoring.
@@ -146,7 +148,7 @@
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/ZeroTrace7/Ai_KYC.git
+git clone https://github.com/ZeroTrace7/SecureAI-KYC.git
 cd Ai_KYC
 ```
 
@@ -533,8 +535,9 @@ MIT License — See `LICENSE` file.
 
 - **GitHub**: [@ZeroTrace7](https://github.com/ZeroTrace7)
 - **Email**: shreyashgupta999@gmail.com
-- **Project Link**: [https://github.com/ZeroTrace7/Ai_KYC](https://github.com/ZeroTrace7/Ai_KYC)
+- **Project Link**: [https://github.com/ZeroTrace7/SecureAI-KYC](https://github.com/ZeroTrace7/SecureAI-KYC)
 
 ---
 
 > **Built with** 🐍 Python, 🤗 Hugging Face, ⚡ FastAPI, 🔥 PyTorch, ✨ Gemini API
+>>>>>>> 53cbdd6 (Initialize and optimize KYC pipeline)
