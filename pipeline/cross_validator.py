@@ -9,6 +9,7 @@ A mismatch here is the strongest signal of document tampering.
 
 from fuzzywuzzy import fuzz
 from loguru import logger
+
 from config import NAME_MATCH_THRESHOLD
 
 

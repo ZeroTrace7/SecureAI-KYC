@@ -12,8 +12,8 @@ Runs in < 200 ms on CPU (vs ~3 sec for DiT).
 """
 
 import re
-from loguru import logger
 
+from loguru import logger
 
 # PAN format: 5 letters, 4 digits, 1 letter  (e.g. ABCDE1234F)
 _PAN_REGEX = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b")

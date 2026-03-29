@@ -1,6 +1,7 @@
-import urllib.request
 import os
 import sys
+import urllib.request
+
 
 def download_file(url, target_path):
     print(f"Downloading {os.path.basename(target_path)}...")
@@ -11,8 +12,9 @@ def download_file(url, target_path):
     except Exception as e:
         print(f"❌ Failed to download: {e}")
 
+
 def main():
-    tools_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'tools'))
+    tools_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools"))
     if not os.path.exists(tools_dir):
         os.makedirs(tools_dir)
 
@@ -35,6 +37,7 @@ def main():
         print("✅ VC++ 2013 Redistributable installer already present.")
 
     print("\n🎉 Tool downloads complete. You can find them in the 'tools/' folder.")
+
 
 if __name__ == "__main__":
     main()

@@ -9,9 +9,10 @@ Aadhaar QR contains XML with name, DOB, gender, UID (last 4 digits).
 """
 
 import xml.etree.ElementTree as ET
-from loguru import logger
-from utils.compat import get_qr_decoder
 
+from loguru import logger
+
+from utils.compat import get_qr_decoder
 
 # Get the best available QR decoder
 _decode_qr = get_qr_decoder()
@@ -61,30 +62,16 @@ def decode_document_qr(image_path: str) -> dict:
         attrs = root.attrib
 
         result["qr_name"] = (
-            attrs.get("name")
-            or attrs.get("Name")
-            or attrs.get("nm")
-            or None
+            attrs.get("name") or attrs.get("Name") or attrs.get("nm") or None
         )
         result["qr_dob"] = (
-            attrs.get("dob")
-            or attrs.get("DOB")
-            or attrs.get("db")
-            or None
+            attrs.get("dob") or attrs.get("DOB") or attrs.get("db") or None
         )
         result["qr_gender"] = (
-            attrs.get("gender")
-            or attrs.get("Gender")
-            or attrs.get("g")
-            or None
+            attrs.get("gender") or attrs.get("Gender") or attrs.get("g") or None
         )
 
-        uid_raw = (
-            attrs.get("uid")
-            or attrs.get("UID")
-            or attrs.get("Uid")
-            or ""
-        )
+        uid_raw = attrs.get("uid") or attrs.get("UID") or attrs.get("Uid") or ""
         # Only keep last 4 digits of UID (privacy)
         result["qr_uid"] = uid_raw[-4:] if len(uid_raw) >= 4 else uid_raw
 

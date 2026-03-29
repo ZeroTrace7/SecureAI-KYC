@@ -15,35 +15,32 @@ Pipeline flow (target: 2-4 sec on CPU):
 """
 
 import os
+import shutil
 import time
 import uuid
-import shutil
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 
-from config import HOST, PORT, DEBUG, CORS_ORIGINS, UPLOAD_DIR
-
-# ── Pipeline imports ──
-from pipeline.quality_gate import check_quality
-from pipeline.preprocessor import preprocess
-from pipeline.classifier import classify_document
-from pipeline.cross_validator import cross_validate
-from pipeline.scorer import compute_fraud_score
-from pipeline.explainer import generate_explanation
-from pipeline.audit_logger import log_verification, get_audit_record
-
+from agents.deepfake_agent import analyze_deepfake
 # ── Agent imports ──
 from agents.ela_agent import compute_ela
-from agents.ocr_agent import extract_text, extract_fields
-from agents.qr_agent import decode_document_qr
 from agents.exif_agent import analyze_exif
-from agents.deepfake_agent import analyze_deepfake
+from agents.ocr_agent import extract_fields, extract_text
+from agents.qr_agent import decode_document_qr
 from agents.voice_agent import verify_voice
-
+from config import CORS_ORIGINS, DEBUG, HOST, PORT, UPLOAD_DIR
+from pipeline.audit_logger import get_audit_record, log_verification
+from pipeline.classifier import classify_document
+from pipeline.cross_validator import cross_validate
+from pipeline.explainer import generate_explanation
+from pipeline.preprocessor import preprocess
+# ── Pipeline imports ──
+from pipeline.quality_gate import check_quality
+from pipeline.scorer import compute_fraud_score
 
 # ═══════════════════════════════════════════════════════════
 #  FastAPI App
@@ -68,6 +65,7 @@ app.add_middleware(
 #  Health Check
 # ═══════════════════════════════════════════════════════════
 
+
 @app.get("/api/health", tags=["System"])
 async def health_check():
     """Health check endpoint — verifies the API is running."""
@@ -81,6 +79,7 @@ async def health_check():
 # ═══════════════════════════════════════════════════════════
 #  Full KYC Verification Pipeline
 # ═══════════════════════════════════════════════════════════
+
 
 @app.post("/api/verify", tags=["Verification"])
 async def verify_document(
@@ -130,14 +129,18 @@ async def verify_document(
         # ═══ STAGE 3: Run Agents (sequentially for CPU, could be parallel with asyncio) ═══
 
         # Agent 1: ELA
-        ela_result = _safe_run("ELA", compute_ela, clean_path, output_dir=str(UPLOAD_DIR))
+        ela_result = _safe_run(
+            "ELA", compute_ela, clean_path, output_dir=str(UPLOAD_DIR)
+        )
 
         # Agent 2: OCR
         ocr_result = _safe_run("OCR", extract_text, clean_path)
         raw_text = ocr_result.get("raw_text", "") if ocr_result else ""
 
         # Agent 3: QR Decode
-        qr_result = _safe_run("QR", decode_document_qr, save_path)  # use original (QR may be lost after preprocess)
+        qr_result = _safe_run(
+            "QR", decode_document_qr, save_path
+        )  # use original (QR may be lost after preprocess)
 
         # Agent 4: EXIF
         exif_result = _safe_run("EXIF", analyze_exif, save_path)  # use original
@@ -163,7 +166,9 @@ async def verify_document(
         scoring_signals = {
             "ela_score": ela_result.get("ela_score") if ela_result else None,
             "exif_flag": exif_result.get("exif_flag") if exif_result else None,
-            "deepfake_score": deepfake_result.get("deepfake_score") if deepfake_result else None,
+            "deepfake_score": (
+                deepfake_result.get("deepfake_score") if deepfake_result else None
+            ),
             "qr_ocr_match": cross_val.get("qr_ocr_match"),
             "name_similarity": cross_val.get("name_similarity", 0),
             "voice_match": None,  # only set if voice endpoint is used
@@ -209,7 +214,9 @@ async def verify_document(
 
         # Get client IP
         client_ip = request.client.host if request.client else None
-        audit_id = log_verification(full_result, filename=document.filename, ip_address=client_ip)
+        audit_id = log_verification(
+            full_result, filename=document.filename, ip_address=client_ip
+        )
         full_result["audit_id"] = audit_id
 
         logger.info(
@@ -232,6 +239,7 @@ async def verify_document(
 # ═══════════════════════════════════════════════════════════
 #  Individual Endpoints
 # ═══════════════════════════════════════════════════════════
+
 
 @app.post("/api/classify", tags=["Individual"])
 async def classify_only(document: UploadFile = File(...)):
@@ -285,6 +293,7 @@ async def get_audit(audit_id: int):
 #  Helpers
 # ═══════════════════════════════════════════════════════════
 
+
 async def _save_upload(upload: UploadFile, prefix: str = "") -> str:
     """Save an uploaded file and return the path."""
     file_id = str(uuid.uuid4())[:8]
@@ -311,4 +320,5 @@ def _safe_run(agent_name: str, func, *args, **kwargs) -> dict | None:
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host=HOST, port=PORT, reload=DEBUG)

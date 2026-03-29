@@ -8,7 +8,9 @@ Validates: blur, resolution, brightness/contrast.
 import cv2
 import numpy as np
 from loguru import logger
-from config import BLUR_THRESHOLD, MIN_RESOLUTION, BRIGHTNESS_MIN, BRIGHTNESS_MAX
+
+from config import (BLUR_THRESHOLD, BRIGHTNESS_MAX, BRIGHTNESS_MIN,
+                    MIN_RESOLUTION)
 
 
 def check_quality(image_path: str) -> dict:
@@ -16,7 +18,7 @@ def check_quality(image_path: str) -> dict:
     Run quality checks on an uploaded document image.
 
     Returns:
-        dict with: quality_pass (bool), blur_score, resolution_ok, 
+        dict with: quality_pass (bool), blur_score, resolution_ok,
         brightness, contrast, details (list of failure reasons)
     """
     img = cv2.imread(image_path)
@@ -57,7 +59,9 @@ def check_quality(image_path: str) -> dict:
         if brightness <= BRIGHTNESS_MIN:
             details.append(f"Image is too dark (brightness={brightness:.1f})")
         else:
-            details.append(f"Image is too bright/washed out (brightness={brightness:.1f})")
+            details.append(
+                f"Image is too bright/washed out (brightness={brightness:.1f})"
+            )
 
     # ── 4. Contrast check (std deviation of grayscale) ──
     contrast = float(np.std(gray))

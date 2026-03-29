@@ -14,8 +14,8 @@ If this crashes during a demo, NOTHING else is affected.
 """
 
 from loguru import logger
-from config import ENABLE_VOICE
 
+from config import ENABLE_VOICE
 
 _speaker_model = None
 
@@ -27,9 +27,11 @@ def _get_speaker_model():
         try:
             # Apply compatibility patch BEFORE importing speechbrain
             from utils.compat import patch_speechbrain
+
             patch_speechbrain()
 
             from speechbrain.inference.speaker import SpeakerRecognition
+
             _speaker_model = SpeakerRecognition.from_hparams(
                 source="speechbrain/spkrec-ecapa-voxceleb",
                 savedir="pretrained_models/spkrec-ecapa-voxceleb",
@@ -71,6 +73,7 @@ def verify_voice(audio_path: str, reference_path: str) -> dict:
 
     # ── File validation ──
     import os
+
     if not os.path.exists(audio_path):
         result["skipped"] = True
         result["reason"] = f"Audio file not found: {audio_path}"

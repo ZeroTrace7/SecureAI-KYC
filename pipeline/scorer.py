@@ -14,17 +14,10 @@ Weight distribution prioritizes the most reliable signals:
 """
 
 from loguru import logger
-from config import (
-    FRAUD_SCORE_THRESHOLD,
-    WEIGHT_QR_OCR_MISMATCH,
-    WEIGHT_ELA,
-    WEIGHT_EXIF,
-    WEIGHT_DEEPFAKE,
-    WEIGHT_ML_FORGERY,
-    WEIGHT_VOICE,
-    ELA_THRESHOLD,
-    DEEPFAKE_THRESHOLD,
-)
+
+from config import (DEEPFAKE_THRESHOLD, ELA_THRESHOLD, FRAUD_SCORE_THRESHOLD,
+                    WEIGHT_DEEPFAKE, WEIGHT_ELA, WEIGHT_EXIF,
+                    WEIGHT_ML_FORGERY, WEIGHT_QR_OCR_MISMATCH, WEIGHT_VOICE)
 
 
 def compute_fraud_score(signals: dict) -> dict:
@@ -72,7 +65,9 @@ def compute_fraud_score(signals: dict) -> dict:
     ela_score = signals.get("ela_score")
     if ela_score is not None:
         # Normalize: scores above threshold are suspicious
-        ela_signal = min(1.0, max(0.0, ela_score / ELA_THRESHOLD)) if ELA_THRESHOLD > 0 else 0
+        ela_signal = (
+            min(1.0, max(0.0, ela_score / ELA_THRESHOLD)) if ELA_THRESHOLD > 0 else 0
+        )
         weighted_sum += ela_signal * WEIGHT_ELA
         total_weight += WEIGHT_ELA
         breakdown["ela"] = {

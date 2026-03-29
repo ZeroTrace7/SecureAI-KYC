@@ -5,6 +5,7 @@ Loads settings from .env file with sensible defaults.
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load .env from project root

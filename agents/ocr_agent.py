@@ -14,8 +14,8 @@ After raw text extraction, regex patterns pull structured fields:
 """
 
 import re
-from loguru import logger
 
+from loguru import logger
 
 # ── Lazy-loaded readers (initialized on first call) ──
 _easyocr_reader = None
@@ -28,6 +28,7 @@ def _get_easyocr_reader():
     if _easyocr_reader is None:
         try:
             import easyocr
+
             _easyocr_reader = easyocr.Reader(["en", "hi"], gpu=False)
             logger.info("OCR Agent: EasyOCR reader initialized (en+hi)")
         except ImportError:
@@ -44,9 +45,11 @@ def _is_tesseract_available():
     global _tesseract_available
     if _tesseract_available is None:
         try:
-            import pytesseract
-            from config import TESSERACT_CMD
             from pathlib import Path
+
+            import pytesseract
+
+            from config import TESSERACT_CMD
 
             if Path(TESSERACT_CMD).exists():
                 pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
@@ -135,9 +138,9 @@ def extract_text(image_path: str) -> dict:
 _AADHAAR_UID = re.compile(r"\b(\d{4}\s?\d{4}\s?\d{4})\b")
 _PAN_NUMBER = re.compile(r"\b([A-Z]{5}[0-9]{4}[A-Z])\b")
 _DOB_PATTERNS = [
-    re.compile(r"\b(\d{2}[/-]\d{2}[/-]\d{4})\b"),   # DD/MM/YYYY or DD-MM-YYYY
-    re.compile(r"\b(\d{4}[/-]\d{2}[/-]\d{2})\b"),   # YYYY-MM-DD
-    re.compile(r"\b(\d{2}\.\d{2}\.\d{4})\b"),        # DD.MM.YYYY
+    re.compile(r"\b(\d{2}[/-]\d{2}[/-]\d{4})\b"),  # DD/MM/YYYY or DD-MM-YYYY
+    re.compile(r"\b(\d{4}[/-]\d{2}[/-]\d{2})\b"),  # YYYY-MM-DD
+    re.compile(r"\b(\d{2}\.\d{2}\.\d{4})\b"),  # DD.MM.YYYY
 ]
 _PASSPORT_NUMBER = re.compile(r"\b([A-Z]\d{7})\b")
 _NAME_LABEL = re.compile(

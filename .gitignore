@@ -59,7 +59,11 @@ temp_ela.jpg
 heatmap.png
 clean.jpg
 *.tmp
+.tmp/
 
 # Executables
 tools/*.exe
 
+# Tokens
+credentials.json
+token.json

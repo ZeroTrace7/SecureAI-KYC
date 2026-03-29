@@ -6,9 +6,10 @@ Pure OpenCV + Pillow — no AI model needed.
 """
 
 import os
+
 import cv2
-from PIL import Image
 from loguru import logger
+from PIL import Image
 
 
 def preprocess(image_path: str, output_dir: str = None) -> str:
@@ -20,7 +21,7 @@ def preprocess(image_path: str, output_dir: str = None) -> str:
 
     Args:
         image_path: Path to the original uploaded image.
-        output_dir:  Directory to save preprocessed image.  
+        output_dir:  Directory to save preprocessed image.
                      Defaults to same directory as input.
 
     Returns:

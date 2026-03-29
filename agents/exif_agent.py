@@ -10,7 +10,6 @@ No AI model needed — pure library-based analysis.
 import exifread
 from loguru import logger
 
-
 _SUSPICIOUS_SOFTWARE = [
     "photoshop",
     "gimp",

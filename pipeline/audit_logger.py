@@ -5,11 +5,14 @@ Tamper-proof audit trail using SQLAlchemy + SQLite.
 Every verification is logged with full signal data.
 """
 
-import json
 import datetime
+import json
+
 from loguru import logger
-from sqlalchemy import create_engine, Column, Integer, String, Float, Text, DateTime
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import (Column, DateTime, Float, Integer, String, Text,
+                        create_engine)
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from config import DATABASE_URL
 
 Base = declarative_base()
@@ -63,7 +66,9 @@ def log_verification(result: dict, filename: str = None, ip_address: str = None)
         session.add(record)
         session.commit()
         audit_id = record.id
-        logger.info(f"Audit: Logged verification #{audit_id} ({result.get('decision')})")
+        logger.info(
+            f"Audit: Logged verification #{audit_id} ({result.get('decision')})"
+        )
         return audit_id
     except Exception as e:
         session.rollback()
@@ -86,7 +91,9 @@ def get_audit_record(audit_id: int) -> dict | None:
                 "fraud_score": record.fraud_score,
                 "decision": record.decision,
                 "explanation": record.explanation,
-                "signals": json.loads(record.signals_json) if record.signals_json else {},
+                "signals": (
+                    json.loads(record.signals_json) if record.signals_json else {}
+                ),
                 "filename": record.filename,
             }
         return None

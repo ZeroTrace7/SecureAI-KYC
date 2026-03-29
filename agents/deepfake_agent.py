@@ -17,7 +17,8 @@ Safety features:
 import cv2
 import numpy as np
 from loguru import logger
-from config import ENABLE_DEEPFAKE, DEEPFAKE_MODEL_ID, MIN_FACE_SIZE
+
+from config import DEEPFAKE_MODEL_ID, ENABLE_DEEPFAKE, MIN_FACE_SIZE
 
 # ── Lazy-loaded model ──
 _deepfake_pipeline = None
@@ -39,6 +40,7 @@ def _get_deepfake_pipeline():
     if _deepfake_pipeline is None:
         try:
             from transformers import pipeline
+
             _deepfake_pipeline = pipeline(
                 "image-classification",
                 model=DEEPFAKE_MODEL_ID,
@@ -155,8 +157,7 @@ def analyze_deepfake(image_path: str) -> dict:
                     break
 
         logger.info(
-            f"Deepfake Agent: score={result['deepfake_score']} "
-            f"face_size={w}x{h}"
+            f"Deepfake Agent: score={result['deepfake_score']} " f"face_size={w}x{h}"
         )
 
     except Exception as e:

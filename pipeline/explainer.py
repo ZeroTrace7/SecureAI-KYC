@@ -9,7 +9,9 @@ Both produce structured, hallucination-free fraud explanations.
 """
 
 import os
+
 from loguru import logger
+
 from config import GEMINI_API_KEY, GEMINI_MODEL
 
 
@@ -90,7 +92,9 @@ def _explain_with_gemini(signals: dict) -> str:
         return explanation
 
     except ImportError:
-        logger.warning("Explainer: google-genai not installed, falling back to template")
+        logger.warning(
+            "Explainer: google-genai not installed, falling back to template"
+        )
         return None
     except Exception as e:
         logger.warning(f"Explainer: Gemini API failed ({e}), falling back to template")

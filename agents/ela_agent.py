@@ -12,9 +12,10 @@ saved at a different compression level than the rest of the image.
 """
 
 import os
+
 import numpy as np
-from PIL import Image, ImageChops
 from loguru import logger
+from PIL import Image, ImageChops
 
 
 def compute_ela(image_path: str, quality: int = 90, output_dir: str = None) -> dict:
