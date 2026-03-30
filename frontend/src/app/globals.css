@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+}
+
+body {
+  background-color: theme('colors.slate.950');
+  color: theme('colors.slate.50');
+  /* Radial gradient for the dark vibe from reference */
+  background-image: radial-gradient(circle at 15% 50%, rgba(79, 70, 229, 0.1), transparent 25%),
+                    radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.08), transparent 25%);
+}
