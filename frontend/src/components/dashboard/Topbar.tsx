@@ -1,6 +1,38 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Bell, Search } from 'lucide-react';
 
+const USER_NAMES = [
+  "Aarav Sharma",
+  "Riya Patel",
+  "Vikram Singh",
+  "Neha Gupta",
+  "Rahul Kumar",
+  "Priya Desai",
+  "Aditya Kapoor",
+  "Ananya Joshi",
+  "Karthik Reddy",
+  "Meera Iyer"
+];
+
 export default function Topbar() {
+  const [userName, setUserName] = useState("Admin");
+  const [initials, setInitials] = useState("AD");
+
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * USER_NAMES.length);
+    const selectedName = USER_NAMES[randomIndex];
+    setUserName(selectedName);
+    
+    const nameParts = selectedName.split(' ');
+    if (nameParts.length >= 2) {
+      setInitials(`${nameParts[0][0]}${nameParts[1][0]}`);
+    } else {
+      setInitials(selectedName.substring(0, 2).toUpperCase());
+    }
+  }, []);
+
   return (
     <header className="h-16 px-6 border-b border-slate-800/60 bg-slate-950/50 backdrop-blur-md flex items-center justify-between z-20 sticky top-0">
       
@@ -24,11 +56,10 @@ export default function Topbar() {
         {/* User Profile */}
         <div className="flex items-center gap-3 border-l border-slate-800 pl-6 cursor-pointer group">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-slate-200 group-hover:text-indigo-400 transition-colors">Hackathon Demo</p>
-            <p className="text-xs text-slate-500">Compliance Officer</p>
+            <p className="text-sm font-medium text-slate-200 group-hover:text-indigo-400 transition-colors">{userName}</p>
           </div>
-          <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300">
-            HD
+          <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300 transform transition-transform hover:scale-105">
+            {initials}
           </div>
         </div>
       </div>
