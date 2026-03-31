@@ -94,4 +94,3 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 Detailed documentation for individual components:
 - [AI Agents Documentation](./AGENTS.md)
-- [Hugging Face Models Reference](./HUGGINGFACE_MODELS.md)

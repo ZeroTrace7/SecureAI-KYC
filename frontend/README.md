@@ -42,6 +42,8 @@ The frontend is designed to be:
 - **Fraud Score Dashboard**: Deep-dive into 10 signal scores with interactive gauges and weight breakdowns.
 - **ELA Heatmap Visualization**: Direct view of tampered document regions.
 - **Audit Viewer**: Full history of KYC attempts with searchable compliance results.
+- **Dynamic Identity Management**: Simulates multiple user logins via randomized usernames and dynamic avatars.
+- **Dynamic Brand Identity**: Animated "Satya KYC" / "SecureAI-KYC" crossfade branding component.
 
 ---
 

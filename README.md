@@ -72,6 +72,7 @@ Our strongest deterministic ID capability is **QR-OCR cross-validation**. Our st
 | **QR-OCR Match** | Deterministic match between signed QR and printed text | 0.25 | Aadhaar, PAN (ID Cards) |
 | **Structured Validation** | Character class (letters in money fields), format checksums, arithmetic math checks | 0.20 | NaviDoMass Forged Payslips |
 | **ELA Forensics** | JPEG re-compression artifacts | 0.18 | Disconnected pixel manipulation |
+| **ML Image Forgery** | MobileNetV2-based detection for splicing and copy-move | 0.15 | CASIA Image Tampering |
 | **Signature/Seal** | Pasted element edge sharpness & seal circularity | 0.12 | Basic pasted components |
 | **EXIF Flag** | Timestamp impossibility & editing software footprints | 0.10 | Non-scrubbed edited files |
 | **Text Integrity** | Font, spatial, DCT compression & ORB copy-move | 0.10 | Crude copy-paste text edits |

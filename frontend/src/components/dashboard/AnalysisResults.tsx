@@ -61,100 +61,6 @@ function AnimatedScore({ target, color }: { target: number; color: string }) {
   );
 }
 
-/* ─── Heatmap Slider ─── */
-function HeatmapSlider({ preview }: { preview: string | null }) {
-  const [sliderPos, setSliderPos] = useState(50);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  const handleMove = (clientX: number) => {
-    if (!containerRef.current || !isDragging.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    setSliderPos((x / rect.width) * 100);
-  };
-
-  const handleMouseDown = () => { isDragging.current = true; };
-  const handleMouseUp = () => { isDragging.current = false; };
-
-  useEffect(() => {
-    const handleGlobalMove = (e: MouseEvent) => handleMove(e.clientX);
-    const handleGlobalUp = () => { isDragging.current = false; };
-    window.addEventListener('mousemove', handleGlobalMove);
-    window.addEventListener('mouseup', handleGlobalUp);
-    return () => {
-      window.removeEventListener('mousemove', handleGlobalMove);
-      window.removeEventListener('mouseup', handleGlobalUp);
-    };
-  }, []);
-
-  const src = preview || '/placeholder-doc.png';
-
-  return (
-    <div className="rounded-xl overflow-hidden border border-slate-700/50 bg-slate-950">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800/80">
-        <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          <Eye className="w-4 h-4 text-purple-400" />
-          ELA Forensic Heatmap
-        </h3>
-        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Drag to reveal</span>
-      </div>
-      <div
-        ref={containerRef}
-        className="relative w-full h-56 cursor-col-resize select-none"
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-      >
-        {/* Original Layer (full) */}
-        <div className="absolute inset-0">
-          <img src={src} alt="Original" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-slate-900/20" />
-        </div>
-
-        {/* Heatmap Layer (clipped) */}
-        <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ width: `${sliderPos}%` }}
-        >
-          <img
-            src={src}
-            alt="Heatmap"
-            className="w-full h-full object-cover"
-            style={{
-              width: containerRef.current ? `${containerRef.current.offsetWidth}px` : '100%',
-              filter: 'hue-rotate(180deg) saturate(3) contrast(1.5) brightness(0.8)',
-              mixBlendMode: 'screen',
-            }}
-          />
-          {/* Heatmap color overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500/30 via-yellow-500/20 to-green-500/10 mix-blend-overlay" />
-        </div>
-
-        {/* Slider handle bar */}
-        <div
-          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] z-10"
-          style={{ left: `${sliderPos}%` }}
-        >
-          <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white/90 shadow-xl flex items-center justify-center">
-            <div className="flex gap-0.5">
-              <ChevronRight className="w-3 h-3 text-slate-900 rotate-180" />
-              <ChevronRight className="w-3 h-3 text-slate-900" />
-            </div>
-          </div>
-        </div>
-
-        {/* Labels */}
-        <div className="absolute bottom-2 left-3 text-[10px] font-bold text-red-400 uppercase bg-black/60 px-2 py-0.5 rounded z-20">
-          Heatmap
-        </div>
-        <div className="absolute bottom-2 right-3 text-[10px] font-bold text-slate-300 uppercase bg-black/60 px-2 py-0.5 rounded z-20">
-          Original
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Agent Check Card ─── */
 function AgentCard({ icon: Icon, title, description, passed, failed, delay }: {
   icon: React.ElementType; title: string; description: string; passed?: boolean; failed?: boolean; delay: number;
@@ -260,7 +166,7 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
         </button>
       </div>
 
-      {/* ─── Top Row: Score + Heatmap ─── */}
+      {/* ─── Top Row: Score + Cross-Validation ─── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
         {/* Risk Score Gauge */}
@@ -306,22 +212,19 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
           </p>
         </motion.div>
 
-        {/* Heatmap Slider */}
+        {/* Cross-Validation Component */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.35, duration: 0.5 }}
           className="col-span-1 md:col-span-2"
         >
-          <HeatmapSlider preview={preview} />
-          
-          {/* Cross-Validation Below Heatmap */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="mt-4 p-5 rounded-xl border border-slate-800/80"
-            style={{ backdropFilter: 'blur(12px)', background: 'rgba(15, 23, 42, 0.5)' }}
+            className="h-full p-8 rounded-2xl border border-slate-800/80 flex flex-col justify-center"
+            style={{ backdropFilter: 'blur(16px)', background: 'rgba(15, 23, 42, 0.6)' }}
           >
             <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
               <Database className="w-4 h-4 text-indigo-400" /> Cross-Validation: OCR ↔ QR Data
@@ -466,7 +369,7 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800/80 bg-slate-900/50">
           <Brain className="w-4 h-4 text-purple-400" />
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Reasoning Engine</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Reasoning</span>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500/80" />
             <div className="w-2 h-2 rounded-full bg-yellow-500/80" />
