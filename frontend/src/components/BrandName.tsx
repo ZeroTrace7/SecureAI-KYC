@@ -32,7 +32,7 @@ export default function BrandName({ className = '', wrapperClassName = '' }: Bra
           pointerEvents: showHindi ? 'none' : 'auto',
         }}
       >
-        SecureAI-KYC
+        Satya KYC
       </span>
 
       {/* Hindi — absolutely stacked on top */}
@@ -51,7 +51,7 @@ export default function BrandName({ className = '', wrapperClassName = '' }: Bra
           pointerEvents: showHindi ? 'auto' : 'none',
         }}
       >
-        सिक्योरAI-KYC
+        सत्य KYC
       </span>
     </span>
   );

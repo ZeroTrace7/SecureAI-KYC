@@ -17,8 +17,8 @@ def get_reader():
         try:
             import easyocr
 
-            _reader = easyocr.Reader(["en", "hi"], gpu=False, verbose=False)
-            logger.info("OCR Loader: EasyOCR reader initialized (en+hi, singleton)")
+            _reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+            logger.info("OCR Loader: EasyOCR reader initialized (en, singleton)")
         except ImportError:
             logger.error("OCR Loader: easyocr package not installed")
             return None

@@ -9,9 +9,9 @@ This directory contains the core intelligence of the SecureAI-KYC system, built 
 The backend is organized into stages:
 - **Stage 0**: Rule-based document classification.
 - **Stage 1-2**: Input quality gate and preprocessing.
-- **Stage 3**: Parallel execution of 6 AI agents (ELA, OCR, QR, EXIF, Deepfake, Voice).
-- **Stage 4**: Cross-validation (OCR vs QR data matching).
-- **Stage 5-6**: Weighted fraud scoring.
+- **Stage 3**: Parallel execution of 8+ forensic agents (ELA, OCR, QR, EXIF, Deepfake, Forgery, Signature/Seal, Blockchain).
+- **Stage 4**: Cross-validation (OCR vs QR data matching) + Text Integrity.
+- **Stage 5-6**: Weighted fraud scoring (optimized for payslip & international document forensics).
 - **Stage 7**: Explainable output generation.
 - **Stage 8**: Audit logging (SQLAlchemy + SQLite).
 
@@ -49,6 +49,22 @@ The backend is organized into stages:
    ```bash
    python scripts/precache_ai_models.py
    ```
+
+---
+
+## ⚡ Performance Architecture
+
+### Parallel Pipeline
+The backend uses a **Phase 1 Parallelization** strategy. Upon document reception, 8+ forensic agents are dispatched concurrently using `concurrent.futures.ThreadPoolExecutor`. This allows CPU-bound tasks (like ELA) to run in parallel with I/O-bound tasks (like Blockchain verification).
+
+### Singleton Model Preloading
+To eliminate "cold start" latency, the `main.py` entry point pre-loads all deep learning models on startup:
+- **EasyOCR**: English + Hindi models for document text extraction.
+- **Deepfake Detector**: HuggingFace transformers pipeline for facial artificiality.
+- **ML Forgery**: MobileNetV2 for splice and manipulation detection.
+
+### OCR Reuse
+Stage 3 (OCR) and Stage 4 (Text Integrity) share a single bounding-box result. By caching the `EasyOCR` results from Phase 1, we eliminate the need for a second high-latency scan during integrity analysis.
 
 ---
 

@@ -2,15 +2,7 @@
 
 **SecureAI-KYC** is an intelligent, multi-agent KYC verification system designed to detect document fraud using advanced AI forensics. Built for the **Document Forgery Detection Blue Team Challenge** at the BITS Pilani Goa × IIT Madras National Hackathon, 2026.
 
----
-
-## 📑 Technical Audit Report (March 2026)
-
-> [!IMPORTANT]
-> **Pre-Submission Audit Complete:** The system has undergone a brutal technical audit. 
-> - **Score:** 9/10 (Ready for Submission)
-> - **Key finding:** The QR-OCR cross-validation is a "superpower" deterministic signal.
-> - **Full Report:** [audit_report.md](./audit_report.md)
+Our pipeline covers the full challenge scope at a system-design level. Its strength is architectural — it combines 8 independent analysis layers rather than relying on a single ML classifier.
 
 ---
 
@@ -18,11 +10,11 @@
 
 | Objective | Status | Implementation |
 |-----------|--------|----------------|
-| OCR + ML for text integrity analysis | ✅ | Font consistency, spatial layout, DCT double-compression (frequency domain), ORB copy-move detection |
+| OCR + ML for text integrity analysis | ✅ | Font consistency, spatial layout, DCT double-compression, plus **Structured Semantic Validation** |
 | Image processing for signature & seal verification | ✅ | HSV segmentation, Hough circles, Sobel edge sharpness (detects digitally pasted elements) |
-| Blockchain integration for document verification | ✅ | SHA-256 + pHash immutable chain in SQLite (zero-cost, no gas fees) |
-| Detailed forensic reports with confidence scores | ✅ | 10-signal weighted scorer (0-100) with full signal breakdown |
-| Multi-modal detection (visual + textual) | ✅ | ELA + EXIF + OCR + QR + Deepfake + ML Forgery + Signature + Text Integrity + Blockchain |
+| Blockchain integration for document verification | ✅ | SHA-256 + pHash immutable chain in SQLite (detects immediate resubmissions) |
+| Detailed forensic reports with confidence scores | ✅ | 8-signal weighted scorer with document-type-aware modifiers and full signal breakdown |
+| Multi-modal detection (visual + textual) | ✅ | Image forensics (ELA/EXIF) + Textual (OCR/Semantic) + ML (Deepfake) + Identity (QR-OCR) |
 
 ---
 
@@ -43,54 +35,65 @@ graph TD
     Frontend -->|REST API| Backend[FastAPI Backend]
     
     subgraph "Verification Pipeline (Stage-Gated)"
-        Backend --> Stage0[Rule-Based Classifier]
-        Stage0 --> Stage1[Quality Gate OpenCV]
+        Backend --> Stage1[Quality Gate OpenCV]
         Stage1 --> Stage2[Preprocessing & Denoising]
         Stage2 --> Stage3[Independent Forensic Agents]
         
-        subgraph "AI Forensic Agents"
+        subgraph "Parallel Verification (Phase 1)"
             Stage3 --> ELA[ELA Pixel Forensics]
-            Stage3 --> OCR[EasyOCR en/hi + Regex]
+            Stage3 --> OCR_TI[OCR + Text Integrity Agent]
             Stage3 --> QR[QR Decoder pyzbar]
             Stage3 --> EXIF[EXIF Timestamp/Metadata]
             Stage3 --> DF[Deepfake Face Detection]
-            Stage3 --> MLF[MobileNetV2 ML Forgery]
-            Stage3 --> SS[Signature/Seal + Edge Sharpness]
-            Stage3 --> TI[Text Integrity + DCT/ORB]
+            Stage3 --> SS[Signature/Seal Verification]
+            Stage3 --> BC[Blockchain Hash Ledger]
         end
         
-        Stage3 --> Stage35[Blockchain Hash Ledger]
-        Stage35 --> Stage4[QR-OCR Cross-Validation]
-        Stage4 --> Stage5[10-Signal Weighted Scoring Engine]
+        Stage3 --> Stage4[QR-OCR Cross-Validation]
+        Stage3 --> Stage4b[Structured Document Validator]
+        Stage4 --> Stage5[Document-Aware Scoring Engine]
+        Stage4b --> Stage5
         Stage5 --> Stage7[Explainable Output Gemini]
     end
     
     Stage7 -->|Compliance Report| Frontend
     Stage7 -->|Audit Trail| DB[(SQLite Audit Log)]
-    Stage35 -->|Hash Chain| BC[(SQLite Blockchain)]
+    Stage3 -->|Hash Chain| BC[(SQLite Blockchain)]
 ```
 
 ---
 
-## 🤖 Agent Portfolio (10 Signals)
+## 🤖 Forensic Capabilities (8-Signal Scorer)
 
-| Signal | Description | Weight | Implementation |
+Our strongest deterministic ID capability is **QR-OCR cross-validation**. Our strongest validated capability for tabular documents is **Structured Document Validation**, which reliably targets NaviDoMass-style payslip edits.
+
+| Signal | Description | Base Weight | Validated On |
 |--------|-------------|--------|----------------|
-| **QR-OCR Match** | Deterministic match between signed QR and printed text | 0.25 | **Kill Feature** - pyzbar + fuzzy matching |
-| **ELA Forensics** | JPEG re-compression artifacts (Heatmap) | 0.18 | Pillow + OpenCV pixel diff analysis |
-| **Signature/Seal** | Pasted element edge sharpness & seal circularity | 0.12 | Sobel Edges + HSV segmentation |
-| **EXIF Flag** | Timestamp impossibility & AI generator footprints | 0.10 | exifread + logical time constraint checks |
-| **Text Integrity** | Font, spatial, DCT compression & ORB copy-move | 0.10 | Frequency domain analysis + ORB keypoints |
-| **Blockchain** | Visual pHash + SHA-256 history verification | 0.08 | Perceptual hashing chain |
-| **Deepfake** | GAN/Diffusion artifact detection in faces | 0.07 | dima806 transformers pipeline |
-| **ML Forgery** | Document-level manipulation/splice detection | 0.05 | MobileNetV2 (kumaran-0188 classifier) |
-| **Optional** | Voice match | 0.05 | Secondary signal |
+| **QR-OCR Match** | Deterministic match between signed QR and printed text | 0.25 | Aadhaar, PAN (ID Cards) |
+| **Structured Validation** | Character class (letters in money fields), format checksums, arithmetic math checks | 0.20 | NaviDoMass Forged Payslips |
+| **ELA Forensics** | JPEG re-compression artifacts | 0.18 | Disconnected pixel manipulation |
+| **Signature/Seal** | Pasted element edge sharpness & seal circularity | 0.12 | Basic pasted components |
+| **EXIF Flag** | Timestamp impossibility & editing software footprints | 0.10 | Non-scrubbed edited files |
+| **Text Integrity** | Font, spatial, DCT compression & ORB copy-move | 0.10 | Crude copy-paste text edits |
+| **Deepfake** | GAN/Diffusion artifact detection in faces | 0.07 | ID photo manipulation |
+| **Blockchain** | Visual pHash + SHA-256 history verification | 0.05 | Re-submission attacks |
+
+> **Note:** We map document types to expected features. A missing seal on a payslip shouldn't reduce trust, but an invalid arithmetic checksum will heavily penalize it. 
 
 ---
 
-## ⚖️ Regulatory Compliance: RBI KYC 2016
+## ⚡ Performance Optimization
+SecureAI-KYC is optimized for real-time applications, featuring:
+- **Phase 1 Parallelization**: Forensic agents launch concurrently in a `ThreadPoolExecutor`.
+- **Single-Pass OCR**: Text Integrity, Structured Validation, and Classification reuse a single EasyOCR scan.
+- **Warm Preloading**: Models are pre-loaded on startup into a singleton layer.
+- **Latency**: Sub-15 seconds for a complete parallel run.
 
-Stage 7 of our pipeline implements **Explainable AI (XAI)**. Using the Gemini API and a context-aware prompt, SecureAI-KYC generates plain-English rejection reasons that cite the **RBI KYC Master Direction 2016**, ensuring legal defensibility for banking institutions.
+---
+
+## ⚖️ Regulatory Compliance & Explainability
+
+Stage 7 implements **Explainable AI (XAI)**. Using the Gemini API and a context-aware prompt, SecureAI-KYC generates plain-English justification reports that cite the **RBI KYC Master Direction 2016** based on our 4-tier decision engine: `GENUINE`, `SUSPICIOUS`, `FORGED`, or `MANUAL_REVIEW`. A single weak signal anomaly never forces an outright rejection without corroboration.
 
 ---
 
@@ -113,11 +116,19 @@ cd frontend && npm install && npm run dev
 
 ---
 
-## 🔬 Hackathon Demo - "The Golden Path"
+## 🔬 Hackathon Demo - The Dual Path
 
-1. **Genuine Upload:** Upload a clean Aadhaar. Observe the green badge and RBI-compliant explanation.
+We recommend demonstrating two primary capabilities:
+
+**Path 1: Deterministic Identity Fakes**
+1. **Genuine Upload:** Upload a clean Aadhaar. Observe the green badge.
 2. **Forged Upload:** Upload an Aadhaar with a renamed field but original QR.
-3. **The Reveal:** Show how the **QR-OCR Cross-Validation** (25% weight) instantly detects the mismatch that a human eye would miss.
+3. **The Reveal:** Show how **QR-OCR Cross-Validation** (highest weight) instantly detects the mismatch.
+
+**Path 2: Semantic Document Forgery (NaviDoMass)**
+1. **Genuine Payslip:** Clean format passes all semantic checks.
+2. **Forged Payslip:** Upload an altered NavidoMass payslip (e.g., character replacements in money fields).
+3. **The Reveal:** Show how the **Structured Semantic Validator** catches broken arithmetic totals, invalid APE/SIRET formats, and letters hidden inside numeric fields—subtle changes that bypass standard image tampering filters.
 
 ---
 
@@ -125,11 +136,10 @@ cd frontend && npm install && npm run dev
 
 | Dataset | Documents | Forgery Types | Link |
 |---------|-----------|---------------|------|
-| NaviDoMass | 477 payslips, ~6000 forged chars | Imitation, copy-paste | [Link](http://navidomass.univ-lr.fr/ForgeryDataset/) |
-| FD-VIED | DNN-generated forgeries | Text add/remove/replace | [arXiv](https://arxiv.org/abs/2311.03650) |
-| CASIA | Comprehensive tampering | Splicing, copy-move | [GitHub](https://github.com/greatzh/Image-Forgery-Datasets-List) |
-| DocTamper | 170,000 documents | Copy-move, splicing, AI text | Academic |
-| Roboflow Forgery | 402 image pairs | Annotated forgery regions | [Roboflow](https://universe.roboflow.com/document-forgery-detection/document-forgery-detection) |
+| **NaviDoMass** | 477 payslips, ~6000 forged chars | Character-level imitation, copy-paste | [Link](http://navidomass.univ-lr.fr/ForgeryDataset/) |
+| **CASIA** | Comprehensive image tampering | Splicing, copy-move | [GitHub](https://github.com/greatzh/Image-Forgery-Datasets-List) |
+| **DocTamper** | 170,000 documents | Copy-move, splicing, AI text | Academic |
+| **FD-VIED** | DNN-generated forgeries | Text add/remove/replace | [arXiv](https://arxiv.org/abs/2311.03650) |
 
 ---
 

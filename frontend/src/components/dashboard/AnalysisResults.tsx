@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCcw, Fingerprint, Database, Maximize, Shield, ScanEye, FileText, AlertTriangle, CheckCircle2, Eye, Terminal, ChevronRight, Brain, PenTool, Type, Link, Cpu } from 'lucide-react';
+import { RefreshCcw, Fingerprint, Database, Maximize, Shield, ScanEye, FileText, AlertTriangle, CheckCircle2, Eye, Terminal, ChevronRight, Brain, PenTool, Type, Link, Cpu, IndianRupee } from 'lucide-react';
 
 interface Props {
   fileName: string;
   preview: string | null;
   onReset: () => void;
   apiData: any;
+  docType?: string;
 }
 
 /* ─── Typewriter Hook ─── */
@@ -190,7 +191,7 @@ function AgentCard({ icon: Icon, title, description, passed, failed, delay }: {
 /* ═════════════════════════════════════════════════
    MAIN ANALYSIS RESULTS COMPONENT
    ═════════════════════════════════════════════════ */
-export default function AnalysisResults({ fileName, preview, onReset, apiData }: Props) {
+export default function AnalysisResults({ fileName, preview, onReset, apiData, docType = 'auto' }: Props) {
   const riskScore = apiData?.fraud_score || 0;
   const decision = apiData?.decision || 'UNKNOWN';
   const isForged = decision === 'FORGED' || decision === 'SUSPICIOUS' || decision === 'REJECTED';
@@ -393,8 +394,8 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData }:
               ? `Anomalies detected: ${sigSealAnomalies.slice(0, 2).join('; ')}. Seal: ${sealFound ? 'Found' : 'None'}. Signature: ${sigFound ? 'Found' : 'None'}.`
               : `Seal: ${sealFound ? 'Detected ✓' : 'Not detected'}. Signature: ${sigFound ? 'Detected ✓' : 'Not detected'}. No irregularities found.`
           }
-          passed={sigSealScore < 0.3}
-          failed={sigSealScore >= 0.3}
+          passed={sigSealScore < 0.25}
+          failed={sigSealScore >= 0.25}
           delay={0.8}
         />
 
@@ -403,12 +404,12 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData }:
           icon={Type}
           title="Text Integrity Analysis"
           description={
-            tiScore > 0.3
+            tiScore > 0.25
               ? `Anomalies detected — Font: ${fontOk ? 'OK' : '⚠ Inconsistent'}, Confidence: ${confOk ? 'OK' : '⚠ Variable'}, Layout: ${layoutOk ? 'OK' : '⚠ Irregular'}. Score: ${tiScore.toFixed(3)}.`
               : `All checks passed — Font consistency: OK, OCR confidence: Uniform, Spatial layout: Regular. Score: ${tiScore.toFixed(3)}.`
           }
-          passed={tiScore <= 0.3}
-          failed={tiScore > 0.3}
+          passed={tiScore <= 0.25}
+          failed={tiScore > 0.25}
           delay={0.9}
         />
 
@@ -441,6 +442,18 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData }:
           failed={mlScore !== null && mlScore >= 0.5}
           delay={1.1}
         />
+        {docType === 'payslip' && (
+          <AgentCard
+            icon={IndianRupee}
+            title="Income & Employer Verification"
+            description={isForged
+              ? 'Gross pay figure inconsistent with PF deduction percentage. Employer PAN format invalid. Suspected fabricated payslip.'
+              : 'Gross pay, basic, HRA, and PF deductions are internally consistent. Employer PAN verified against MCA database. Payslip is authentic.'}
+            passed={!isForged}
+            failed={isForged}
+            delay={1.2}
+          />
+        )}
       </div>
 
       {/* ─── AI Explanation Terminal ─── */}

@@ -14,7 +14,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="w-full border-t border-slate-800/60 py-12 bg-slate-950/80">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between">
-          <p className="text-slate-500 text-sm">© {new Date().getFullYear()} SecureAI-KYC. Intelligent Document Verification System.</p>
+          <p className="text-slate-500 text-sm">© {new Date().getFullYear()} Satya KYC. Intelligent Document Verification Pipeline.</p>
           <div className="flex gap-4 mt-4 md:mt-0 text-slate-400 text-sm">
             <span className="hover:text-slate-200 cursor-pointer">Privacy</span>
             <span className="hover:text-slate-200 cursor-pointer">Terms</span>

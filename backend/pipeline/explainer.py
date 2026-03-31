@@ -88,6 +88,13 @@ def _build_signal_summary(signals: dict) -> str:
         else:
             parts.append(f"Blockchain Ledger: First submission (score={bc_score:.3f})")
 
+    # Structured Validation
+    sv_score = signals.get("structured_validation_score")
+    if sv_score is not None and sv_score > 0:
+        sv_details = signals.get("structured_validation_details", [])
+        detail_text = "; ".join(sv_details[:3]) if sv_details else "anomalies detected"
+        parts.append(f"Structured Validation: score={sv_score:.3f} — {detail_text}")
+
     # Final score
     parts.append(f"Fraud Score: {signals.get('fraud_score', 0)}/100")
     parts.append(f"Decision: {signals.get('decision', 'UNKNOWN')}")
@@ -210,6 +217,19 @@ def _explain_with_template(signals: dict) -> str:
         detail_text = bc_details[0] if bc_details else "previously flagged document"
         reasons.append(
             f"Blockchain ledger flagged this document: {detail_text}."
+        )
+
+    # Structured Validation
+    sv_score = signals.get("structured_validation_score", 0)
+    if sv_score > 0.1:
+        sv_details = signals.get("structured_validation_details", [])
+        if sv_details:
+            detail_text = " ".join(sv_details[:3])
+        else:
+            detail_text = "format violations, character anomalies, or arithmetic inconsistencies"
+        reasons.append(
+            f"Structured document validation detected semantic anomalies "
+            f"(score: {sv_score:.3f}). {detail_text}."
         )
 
     if decision == "REJECTED":

@@ -51,7 +51,7 @@ export default function Hero() {
 
         {/* Subtitle */}
         <p className="animate-fade-in-up delay-300 max-w-2xl mx-auto text-lg text-slate-400 mt-8 mb-10 leading-relaxed">
-          <span className="font-semibold text-indigo-300">SecureAI-KYC</span> centralizes document verification, forgery detection, and multi-agent
+          <span className="font-semibold text-indigo-300">Satya KYC</span> centralizes document verification, forgery detection, and multi-agent
           cross-validation in one seamless pipeline. Replace manual checks with instant,
           intelligent certainty.
         </p>

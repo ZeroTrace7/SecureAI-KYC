@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SecureAI-KYC | Intelligent Document Verification",
-  description: "SecureAI-KYC — the operating system for modern KYC. Centralised fraud detection, forgery analysis, and multi-agent cross-validation.",
+  title: "Satya KYC | Intelligent Document Verification",
+  description: "Satya KYC — the operating system for modern KYC. Centralised fraud detection, forgery analysis, and multi-agent cross-validation.",
 };
 
 export default function RootLayout({

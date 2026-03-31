@@ -30,9 +30,6 @@ export default function DashboardPage() {
                 { name: 'EXIF Extractor', status: 'Online', color: 'bg-emerald-500' },
                 { name: 'QR Cross-Val', status: 'Online', color: 'bg-emerald-500' },
                 { name: 'Scoring Engine', status: 'Online', color: 'bg-emerald-500' },
-                { name: 'Signature Verifier', status: 'Online', color: 'bg-emerald-500' },
-                { name: 'Text Integrity', status: 'Online', color: 'bg-emerald-500' },
-                { name: 'Blockchain Ledger', status: 'Online', color: 'bg-emerald-500' },
               ].map((service, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/30 border border-slate-700/40">
                   <div className="flex items-center gap-3">

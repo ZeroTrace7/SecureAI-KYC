@@ -35,12 +35,13 @@ from agents.ml_forgery_agent import analyze_forgery
 from agents.ocr_agent import extract_fields, extract_text
 from agents.qr_agent import decode_document_qr
 from agents.signature_seal_agent import analyze_signature_seal
+from agents.structured_doc_agent import analyze_structured_document
 from agents.text_integrity_agent import analyze_text_integrity
 from agents.voice_agent import verify_voice
 from config import CORS_ORIGINS, DEBUG, HOST, PORT, UPLOAD_DIR
 from pipeline.audit_logger import get_audit_record, log_verification
 from pipeline.blockchain_ledger import register_document, verify_document
-from pipeline.classifier import classify_document
+from pipeline.classifier import classify_document, is_payslip_like
 from pipeline.cross_validator import cross_validate
 from pipeline.explainer import generate_explanation
 from pipeline.preprocessor import preprocess
@@ -186,58 +187,123 @@ async def verify_document_endpoint(
         # ═══ STAGE 2: Preprocessing ═══
         clean_path = preprocess(save_path, output_dir=str(UPLOAD_DIR))
 
-        # ═══ STAGE 3: Run Agents (sequentially for CPU) ═══
+        # ═══ STAGE 3: Run Agents (PARALLEL for speed) ═══
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        # Agent 1: ELA
-        ela_result = _safe_run(
-            "ELA", compute_ela, clean_path, output_dir=str(UPLOAD_DIR)
-        )
+        # --- Helper: run OCR and immediately run Text Integrity to minimize waiting ---
+        def _run_ocr_and_text_integrity(path):
+            _ocr_bbox = None
+            try:
+                from utils.ocr_loader import get_reader
+                reader = get_reader()
+                if reader:
+                    # ── Downscale for OCR speed: cap at 800px max side ──
+                    # OCR time scales with pixel count; 800px is enough for text.
+                    import cv2
+                    _ocr_img = cv2.imread(path)
+                    if _ocr_img is not None:
+                        _h, _w = _ocr_img.shape[:2]
+                        _max_ocr = 800
+                        if max(_h, _w) > _max_ocr:
+                            _scale = _max_ocr / max(_h, _w)
+                            _ocr_img = cv2.resize(
+                                _ocr_img,
+                                (int(_w * _scale), int(_h * _scale)),
+                                interpolation=cv2.INTER_AREA,
+                            )
+                            logger.debug(f"OCR: Downscaled {_w}x{_h} → {_ocr_img.shape[1]}x{_ocr_img.shape[0]} for speed")
+                        # Feed numpy array directly (avoids temp file)
+                        raw_results = reader.readtext(_ocr_img)
+                    else:
+                        raw_results = reader.readtext(path)
+                    _ocr_bbox = [
+                        {"bbox": bbox, "text": text, "confidence": conf}
+                        for bbox, text, conf in raw_results
+                    ]
+                    _raw = " ".join(item["text"] for item in _ocr_bbox)
+                    _avg = (
+                        sum(item["confidence"] for item in _ocr_bbox) / len(_ocr_bbox)
+                        if _ocr_bbox else 0.0
+                    )
+                    _ocr_res = {
+                        "raw_text": _raw,
+                        "method": "easyocr",
+                        "confidence": round(_avg, 3),
+                        "line_count": len(_ocr_bbox),
+                        "lines": [{"text": d["text"], "confidence": round(d["confidence"], 3)} for d in _ocr_bbox],
+                    }
+                    logger.info(f"OCR Agent [EasyOCR]: Extracted {len(_ocr_bbox)} lines, avg_conf={_avg:.2f}")
+                else:
+                    _ocr_res = _safe_run("OCR", extract_text, path)
+                    _raw = _ocr_res.get("raw_text", "") if _ocr_res else ""
+            except Exception as e:
+                logger.warning(f"OCR direct call failed, falling back: {e}")
+                _ocr_res = _safe_run("OCR", extract_text, path)
+                _raw = _ocr_res.get("raw_text", "") if _ocr_res else ""
 
-        # Agent 2: OCR
-        ocr_result = _safe_run("OCR", extract_text, clean_path)
-        raw_text = ocr_result.get("raw_text", "") if ocr_result else ""
+            # Run Text Integrity immediately after OCR finishes on the same thread
+            _ti_res = _safe_run("TextIntegrity", analyze_text_integrity, path, ocr_details=_ocr_bbox)
+            
+            return _ocr_res, _raw, _ti_res
 
-        # Agent 3: QR Decode
-        qr_result = _safe_run(
-            "QR", decode_document_qr, save_path
-        )  # use original (QR may be lost after preprocess)
+        # --- Phase 1: Launch all agents in parallel ---
+        logger.info("Pipeline: Launching agents in parallel...")
+        phase1_start = time.time()
 
-        # Agent 4: EXIF
-        exif_result = _safe_run("EXIF", analyze_exif, save_path)  # use original
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            fut_ela       = executor.submit(_safe_run, "ELA", compute_ela, clean_path, output_dir=str(UPLOAD_DIR))
+            fut_ocr_ti    = executor.submit(_run_ocr_and_text_integrity, clean_path)
+            fut_qr        = executor.submit(_safe_run, "QR", decode_document_qr, save_path)
+            fut_exif      = executor.submit(_safe_run, "EXIF", analyze_exif, save_path)
+            fut_deepfake  = executor.submit(_safe_run, "Deepfake", analyze_deepfake, clean_path)
+            fut_ml_forg   = executor.submit(_safe_run, "MLForgery", analyze_forgery, clean_path)
+            fut_sig_seal  = executor.submit(_safe_run, "Signature/Seal", analyze_signature_seal, clean_path)
+            fut_blockchain = executor.submit(_safe_run, "Blockchain", verify_document, save_path)
 
-        # Agent 5: Deepfake
-        deepfake_result = _safe_run("Deepfake", analyze_deepfake, clean_path)
+        # --- Collect parallel results ---
+        ela_result        = fut_ela.result()
+        ocr_result, raw_text, text_integrity_result = fut_ocr_ti.result()
+        qr_result         = fut_qr.result()
+        exif_result       = fut_exif.result()
+        deepfake_result   = fut_deepfake.result()
+        ml_forgery_result = fut_ml_forg.result()
+        sig_seal_result   = fut_sig_seal.result()
+        blockchain_result = fut_blockchain.result()
 
-        # Agent 5b: ML Forgery (full document, not just face)
-        ml_forgery_result = _safe_run("MLForgery", analyze_forgery, clean_path)
-
-        # Agent 6: Signature & Seal Verification
-        sig_seal_result = _safe_run(
-            "Signature/Seal", analyze_signature_seal, clean_path
-        )
-
-        # Agent 7: Text Integrity
-        text_integrity_result = _safe_run(
-            "TextIntegrity", analyze_text_integrity, clean_path
-        )
+        logger.info(f"Pipeline: All parallel agents (including OCR+TextIntegrity) completed in {time.time() - phase1_start:.1f}s")
 
         # ═══ STAGE 0: Classification (needs OCR text + QR info) ═══
         has_qr = qr_result.get("has_qr", False) if qr_result else False
         classification = classify_document(raw_text, has_qr=has_qr)
         doc_type = classification.get("document_type", "unknown")
 
+        # ── Fallback: if classifier said 'other' but text looks like a payslip,
+        # promote to salary_slip so the structured validator runs.
+        if doc_type == "other" and is_payslip_like(raw_text):
+            logger.warning(
+                "Classifier fallback: doc_type was 'other' but OCR text "
+                "contains payslip-like keywords — promoting to 'salary_slip'"
+            )
+            doc_type = "salary_slip"
+            classification["document_type"] = "salary_slip"
+            classification["confidence"] = 0.50
+            classification["method"] = "rule:payslip_fallback"
+
         # ═══ Extract structured fields from OCR ═══
         ocr_fields = extract_fields(raw_text, document_type=doc_type)
-
-        # ═══ STAGE 3.5: Blockchain Verification & Registration ═══
-        blockchain_result = _safe_run(
-            "Blockchain", verify_document, save_path
-        )
 
         # ═══ STAGE 4: Cross-Validation ═══
         cross_val = cross_validate(
             ocr_data=ocr_fields,
             qr_data=qr_result if qr_result else {},
+        )
+
+        # ═══ STAGE 4b: Structured Document Validation ═══
+        structured_result = _safe_run(
+            "StructuredDoc",
+            analyze_structured_document,
+            raw_text,
+            doc_type=doc_type,
         )
 
         # ═══ STAGE 5-6: Fraud Scoring ═══
@@ -269,6 +335,10 @@ async def verify_document_endpoint(
             "blockchain_score": (
                 blockchain_result.get("blockchain_score")
                 if blockchain_result else None
+            ),
+            "structured_validation_score": (
+                structured_result.get("structured_validation_score")
+                if structured_result else None
             ),
         }
         score_result = compute_fraud_score(scoring_signals)
@@ -340,10 +410,12 @@ async def verify_document_endpoint(
             "signature_seal": sig_seal_result or {},
             "text_integrity": text_integrity_result or {},
             "blockchain": blockchain_result or {},
+            "structured_validation": structured_result or {},
             "cross_validation": cross_val,
             "fraud_score": score_result["fraud_score"],
             "decision": score_result["decision"],
             "score_breakdown": score_result["signal_breakdown"],
+            "corroborating_signals": score_result.get("corroborating_signals", 0),
             "explanation": explain_result["explanation"],
             "explanation_method": explain_result["method"],
             "processing_time_seconds": elapsed,

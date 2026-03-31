@@ -1,0 +1,233 @@
+{
+  "summary": {
+    "passed": 19,
+    "warned": 0,
+    "failed": 0,
+    "total_seconds": 11.5
+  },
+  "stages": [
+    {
+      "stage": "1. Quality Gate",
+      "status": "PASS",
+      "seconds": 0.013,
+      "result_keys": [
+        "quality_pass",
+        "blur_score",
+        "resolution",
+        "resolution_ok",
+        "brightness",
+        "contrast",
+        "details"
+      ]
+    },
+    {
+      "stage": "2. Preprocessor",
+      "status": "PASS",
+      "reason": "Returned str, expected dict",
+      "seconds": 0.062,
+      "result_keys": [
+        "output_path"
+      ]
+    },
+    {
+      "stage": "3. ELA Agent",
+      "status": "PASS",
+      "seconds": 0.078,
+      "result_keys": [
+        "ela_score",
+        "heatmap_path",
+        "max_diff",
+        "mean_diff"
+      ]
+    },
+    {
+      "stage": "4. EXIF Agent",
+      "status": "PASS",
+      "seconds": 0.0,
+      "result_keys": [
+        "exif_flag",
+        "software",
+        "camera_make",
+        "camera_model",
+        "date_taken",
+        "date_modified",
+        "has_exif",
+        "details"
+      ]
+    },
+    {
+      "stage": "5. QR Agent",
+      "status": "PASS",
+      "seconds": 0.032,
+      "result_keys": [
+        "has_qr",
+        "qr_name",
+        "qr_dob",
+        "qr_gender",
+        "qr_uid",
+        "qr_raw",
+        "method"
+      ]
+    },
+    {
+      "stage": "6a. EasyOCR Singleton",
+      "status": "PASS",
+      "seconds": 7.701
+    },
+    {
+      "stage": "6b. EasyOCR readtext (800px)",
+      "status": "PASS",
+      "seconds": 3.248,
+      "regions": 12
+    },
+    {
+      "stage": "7. Text Integrity Agent",
+      "status": "PASS",
+      "seconds": 0.169,
+      "result_keys": [
+        "text_integrity_score",
+        "font_analysis",
+        "confidence_analysis",
+        "spatial_analysis",
+        "integrity_details",
+        "skipped",
+        "dct_analysis",
+        "copy_move_analysis"
+      ]
+    },
+    {
+      "stage": "8. Deepfake Agent",
+      "status": "PASS",
+      "seconds": 0.076,
+      "result_keys": [
+        "deepfake_score",
+        "face_found",
+        "face_size",
+        "skipped",
+        "reason"
+      ]
+    },
+    {
+      "stage": "9. ML Forgery Agent",
+      "status": "PASS",
+      "seconds": 0.0,
+      "result_keys": [
+        "ml_forgery_score",
+        "prediction",
+        "skipped",
+        "reason"
+      ]
+    },
+    {
+      "stage": "10. Signature/Seal Agent",
+      "status": "PASS",
+      "seconds": 0.025,
+      "result_keys": [
+        "seal",
+        "signature",
+        "edge_analysis",
+        "signature_seal_score",
+        "anomalies",
+        "skipped"
+      ]
+    },
+    {
+      "stage": "11. Blockchain Verify",
+      "status": "PASS",
+      "seconds": 0.072,
+      "result_keys": [
+        "hash_verified",
+        "previously_seen",
+        "exact_match",
+        "similar_count",
+        "chain_valid",
+        "document_hash",
+        "perceptual_hash",
+        "blockchain_score",
+        "total_blocks",
+        "match_details"
+      ]
+    },
+    {
+      "stage": "12. Classifier",
+      "status": "PASS",
+      "seconds": 0.0,
+      "result_keys": [
+        "document_type",
+        "confidence",
+        "method"
+      ]
+    },
+    {
+      "stage": "13. Structured Doc Agent",
+      "status": "PASS",
+      "seconds": 0.0,
+      "result_keys": [
+        "structured_validation_score",
+        "fields_extracted",
+        "format_violations",
+        "character_anomalies",
+        "arithmetic_errors",
+        "anomaly_count",
+        "details",
+        "skipped",
+        "doc_family"
+      ]
+    },
+    {
+      "stage": "14. Cross-Validator",
+      "status": "PASS",
+      "seconds": 0.0,
+      "result_keys": [
+        "qr_ocr_match",
+        "name_similarity",
+        "dob_match",
+        "uid_match",
+        "mismatches",
+        "confidence"
+      ]
+    },
+    {
+      "stage": "15. Scorer",
+      "status": "PASS",
+      "seconds": 0.0,
+      "result_keys": [
+        "fraud_score",
+        "decision",
+        "threshold",
+        "signal_breakdown",
+        "signals_used",
+        "corroborating_signals",
+        "doc_type_profile"
+      ]
+    },
+    {
+      "stage": "16. Explainer",
+      "status": "PASS",
+      "seconds": 0.0,
+      "result_keys": [
+        "explanation",
+        "method"
+      ]
+    },
+    {
+      "stage": "17. Blockchain Register",
+      "status": "PASS",
+      "seconds": 0.021,
+      "result_keys": [
+        "registered",
+        "block_id",
+        "document_hash",
+        "perceptual_hash",
+        "block_hash",
+        "prev_block_hash"
+      ]
+    },
+    {
+      "stage": "18. Audit Logger",
+      "status": "PASS",
+      "seconds": 0.0,
+      "audit_id": 145
+    }
+  ]
+}

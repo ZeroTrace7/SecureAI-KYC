@@ -34,11 +34,12 @@ def cross_validate(ocr_data: dict, qr_data: dict) -> dict:
     }
 
     # ── If no QR data available, skip cross-validation ──
-    if not qr_data or qr_data.get("error"):
+    has_qr = qr_data.get("has_qr", False) if qr_data else False
+    if not qr_data or qr_data.get("error") or not has_qr:
         logger.warning("Cross-validation: No QR data available, skipping")
         return {
             **result,
-            "qr_ocr_match": None,  # indeterminate
+            "qr_ocr_match": None,  # indeterminate — scorer will skip this signal
             "confidence": 0.0,
             "mismatches": ["QR data not available for cross-validation"],
         }
@@ -64,6 +65,7 @@ def cross_validate(ocr_data: dict, qr_data: dict) -> dict:
             result["qr_ocr_match"] = False
     else:
         result["mismatches"].append("Name field missing from OCR or QR data")
+        result["qr_ocr_match"] = False
 
     # ── DOB matching (exact) ──
     ocr_dob = (ocr_data.get("dob") or "").strip()
@@ -82,6 +84,7 @@ def cross_validate(ocr_data: dict, qr_data: dict) -> dict:
             result["qr_ocr_match"] = False
     else:
         result["mismatches"].append("DOB field missing from OCR or QR data")
+        result["qr_ocr_match"] = False
 
     # ── UID matching (last 4 digits) ──
     ocr_uid = (ocr_data.get("uid") or "").replace(" ", "")[-4:]
@@ -96,6 +99,7 @@ def cross_validate(ocr_data: dict, qr_data: dict) -> dict:
             result["qr_ocr_match"] = False
     else:
         result["mismatches"].append("UID field missing from OCR or QR data")
+        result["qr_ocr_match"] = False
 
     # ── Overall confidence ──
     if result["qr_ocr_match"] is True and not result["mismatches"]:

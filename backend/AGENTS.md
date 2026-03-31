@@ -1,70 +1,82 @@
-\# Agent Instructions
+# 🤖 SecureAI-KYC Forensic Agent Suite
 
-\> This file is mirrored across CLAUDE.md, AGENTS.md, and GEMINI.md so the same instructions load in any AI environment.
+SecureAI-KYC utilizes a multi-layered, 10-signal forensic pipeline where each agent specializes in a specific domain of document verification. 
 
-You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch.
+---
 
-\#\# The 3-Layer Architecture
+## 🧭 Pipeline Orchestration
+All agents are coordinated by `backend/main.py` using a **Phase 1 Parallelization** model. Independent agents execute concurrently in a thread pool to minimize end-to-end latency (~14s total).
 
-\*\*Layer 1: Directive (What to do)\*\*  
-\- Basically just SOPs written in Markdown, live in \`directives/\`  
-\- Define the goals, inputs, tools/scripts to use, outputs, and edge cases  
-\- Natural language instructions, like you'd give a mid-level employee
+---
 
-\*\*Layer 2: Orchestration (Decision making)\*\*  
-\- This is you. Your job: intelligent routing.  
-\- Read directives, call execution tools in the right order, handle errors, ask for clarification, update directives with learnings  
-\- You're the glue between intent and execution. E.g you don't try scraping websites yourself—you read \`directives/scrape\_website.md\` and come up with inputs/outputs and then run \`execution/scrape\_single\_site.py\`
+## 🛠️ The 10 Forensic Agents
 
-\*\*Layer 3: Execution (Doing the work)\*\*  
-\- Deterministic Python scripts in \`execution/\`  
-\- Environment variables, api tokens, etc are stored in \`.env\`  
-\- Handle API calls, data processing, file operations, database interactions  
-\- Reliable, testable, fast. Use scripts instead of manual work. Commented well.
+### 1. ELA Agent (`agents/ela_agent.py`)
+- **Domain**: Pixel-level forensics.
+- **Logic**: Performs **Error Level Analysis** by resaving the image at a known quality (95%) and computing the absolute pixel difference. 
+- **Output**: Generates a heatmap where bright spots indicate inconsistent compression levels—a hallmark of digital splicing.
 
-\*\*Why this works:\*\* if you do everything yourself, errors compound. 90% accuracy per step \= 59% success over 5 steps. The solution is push complexity into deterministic code. That way you just focus on decision-making.
+### 2. OCR Agent (`agents/ocr_agent.py`)
+- **Domain**: Text extraction.
+- **Logic**: Utilizes **EasyOCR** (singleton) with English and Hindi support. 
+- **Output**: Extracts raw text and uses regex for field-level identification (Name, DOB, UID, PAN, Passport).
 
-\#\# Operating Principles
+### 3. QR Agent (`agents/qr_agent.py`)
+- **Domain**: Encrypted data validation.
+- **Logic**: Uses `pyzbar` to decode 1D/2D barcodes (Aadhaar QR, etc.).
+- **Output**: Decodes embedded JSON/XML data for deterministic cross-validation against OCR text.
 
-\*\*1. Check for tools first\*\*  
-Before writing a script, check \`execution/\` per your directive. Only create new scripts if none exist.
+### 4. EXIF Agent (`agents/exif_agent.py`)
+- **Domain**: Metadata forensics.
+- **Logic**: Extracts EXIF/IPTC headers using `exifread`.
+- **Alerts**: Flags impossible timestamps (e.g., modified date before creation) and software signatures from AI generators (DALL-E, Midjourney) or editors (Photoshop, Canva).
 
-\*\*2. Self-anneal when things break\*\*  
-\- Read error message and stack trace  
-\- Fix the script and test it again (unless it uses paid tokens/credits/etc—in which case you check w user first)  
-\- Update the directive with what you learned (API limits, timing, edge cases)  
-\- Example: you hit an API rate limit → you then look into API → find a batch endpoint that would fix → rewrite script to accommodate → test → update directive.
+### 5. Deepfake Agent (`agents/deepfake_agent.py`)
+- **Domain**: Facial biometrics.
+- **Logic**: Runs a HuggingFace Transformers pipeline (`dima806/deepfake_vs_real_image_detection`) on detected faces.
+- **Output**: Probability score (0-1) of the face being synthetically generated.
 
-\*\*3. Update directives as you learn\*\*  
-Directives are living documents. When you discover API constraints, better approaches, common errors, or timing expectations—update the directive. But don't create or overwrite directives without asking unless explicitly told to. Directives are your instruction set and must be preserved (and improved upon over time, not extemporaneously used and then discarded).
+### 6. Signature/Seal Agent (`agents/signature_seal_agent.py`)
+- **Domain**: Document integrity.
+- **Logic**: 
+  - **Seals**: HSV color-space segmentation for red/blue circular stamps + contour validation.
+  - **Signatures**: Adaptive thresholding to detect high-frequency ink strokes.
+  - **Edge Forensics**: Sobel edge sharpness analysis to detect "digital pasting" (unusually sharp edges compared to paper background).
 
-\#\# Self-annealing loop
+### 7. Text Integrity Agent (`agents/text_integrity_agent.py`)
+- **Domain**: Typography & Frequency analysis.
+- **Logic**:
+  - **Font Consistency**: Measures variance in character heights and spacing outliers.
+  - **DCT Analysis**: Frequency domain peak detection for double-JPEG compression (spectral markers).
+  - **Copy-Move**: ORB (Oriented FAST and Rotated BRIEF) feature matching to detect duplicated document regions.
 
-Errors are learning opportunities. When something breaks:  
-1\. Fix it  
-2\. Update the tool  
-3\. Test tool, make sure it works  
-4\. Update directive to include new flow  
-5\. System is now stronger
+### 8. Blockchain Agent (`pipeline/blockchain_ledger.py`)
+- **Domain**: Global immutability.
+- **Logic**: Computes a SHA-256 binary hash + a **Perceptual Hash (pHash)** of every document.
+- **Output**: Checks an immutable SQLite chain for previous submissions. If a document was previously rejected, the blockchain signal triggers an immediate fraud alert.
 
-\#\# File Organization
+### 9. ML Forgery Agent (`agents/ml_forgery_agent.py`)
+- **Domain**: Deep learning forensics.
+- **Logic**: MobileNetV2-based classification trained on forgery datasets (NaviDoMass, DocTamper).
+- **Note**: Acts as a redundant visual signal to ELA for high-confidence forgery detection.
 
-\*\*Deliverables vs Intermediates:\*\*  
-\- \*\*Deliverables\*\*: Google Sheets, Google Slides, or other cloud-based outputs that the user can access  
-\- \*\*Intermediates\*\*: Temporary files needed during processing
+### 10. Cross-Validator (`pipeline/cross_validator.py`)
+- **Domain**: Logical consistency.
+- **Logic**: A "Killer Feature" that performs **Fuzzy String Matching** (Levenshtein distance) between OCR-extracted text and QR-embedded metadata.
+- **Output**: Detects field-level tampering (e.g., a renamed Aadhaar card where the QR still points to the original owner).
 
-\*\*Directory structure:\*\*  
-\- \`.tmp/\` \- All intermediate files (dossiers, scraped data, temp exports). Never commit, always regenerated.  
-\- \`execution/\` \- Python scripts (the deterministic tools)  
-\- \`directives/\` \- SOPs in Markdown (the instruction set)  
-\- \`.env\` \- Environment variables and API keys  
-\- \`credentials.json\`, \`token.json\` \- Google OAuth credentials (required files, in \`.gitignore\`)
+---
 
-\*\*Key principle:\*\* Local files are only for processing. Deliverables live in cloud services (Google Sheets, Slides, etc.) where the user can access them. Everything in \`.tmp/\` can be deleted and regenerated.
+## ⚖️ Scoring Engine (`pipeline/scorer.py`)
+The signals are aggregated into a weighted score (0-100). The current configuration prioritizes high-confidence deterministic signals:
 
-\#\# Summary
-
-You sit between human intent (directives) and deterministic execution (Python scripts). Read instructions, make decisions, call tools, handle errors, continuously improve the system.
-
-Be pragmatic. Be reliable. Self-anneal.
-
+| Signal | Weight |
+|--------|--------|
+| QR-OCR Match | 0.25 |
+| Text Integrity | 0.20 |
+| ELA Forensics | 0.18 |
+| Blockchain | 0.15 |
+| Signature/Seal | 0.12 |
+| EXIF Flag | 0.10 |
+| ML Forgery | 0.08 |
+| Deepfake | 0.07 |

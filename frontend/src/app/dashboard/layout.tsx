@@ -1,5 +1,6 @@
 import Sidebar from '@/components/dashboard/Sidebar';
 import Topbar from '@/components/dashboard/Topbar';
+import { DocumentProvider } from '@/context/DocumentContext';
 
 export default function DashboardLayout({
   children,
@@ -21,7 +22,9 @@ export default function DashboardLayout({
           {/* Subtle glow behind dashboard content */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-96 bg-indigo-500/10 blur-[100px] pointer-events-none rounded-full" />
           <div className="relative z-10 max-w-7xl mx-auto h-full">
-            {children}
+            <DocumentProvider>
+              {children}
+            </DocumentProvider>
           </div>
         </main>
       </div>

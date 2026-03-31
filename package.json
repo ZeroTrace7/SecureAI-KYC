@@ -1,0 +1,12 @@
+{
+  "name": "secureai-kyc-root",
+  "version": "1.0.0",
+  "description": "SecureAI-KYC root automation for concurrent backend and frontend startup.",
+  "scripts": {
+    "dev": "npx concurrently \"npm run dev --prefix frontend\" \"cd backend && python main.py\" --names \"FRONTEND,BACKEND\" --prefix_colors \"cyan,magenta\"",
+    "install-all": "npm install --prefix frontend && pip install -r backend/requirements.txt"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

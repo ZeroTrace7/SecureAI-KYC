@@ -7,9 +7,10 @@ This directory contains the user-facing dashboard for the SecureAI-KYC system, b
 ## 🎨 Design Vision
 
 The frontend is designed to be:
-- **Premium & Modern**: Using sleek dark modes and elegant layouts.
+- **Premium Aesthetics**: Migrated the `ai-spark` design language with glowing orbs, glassmorphic cards, and high-performance Framer Motion animations.
+- **Micro-interactions**: Hover effects, staggered lists, and glowing gradients for a high-end fintech feel.
 - **Dynamic**: Real-time feedback and animated transitions for each verification stage.
-- **Secure**: Transparent indicators of ELA forensics and fraud scores.
+- **Secure**: Transparent indicators of ELA forensics and multi-signal fraud scores.
 
 ---
 
@@ -37,10 +38,10 @@ The frontend is designed to be:
 
 ## 📋 Features
 
-- **Document Upload**: Multi-format support (JPG, PNG, PDF).
-- **Audit Viewer**: Browse through past verification logs.
-- **Fraud Score Dashboard**: Deep dive into individual signal scores (ELA, OCR, QR).
+- **Forensic Pipeline Visualization**: Real-time progress through all parallel stages (OCR, EXIF, ELA, Seal, Deepfake, etc.).
+- **Fraud Score Dashboard**: Deep-dive into 10 signal scores with interactive gauges and weight breakdowns.
 - **ELA Heatmap Visualization**: Direct view of tampered document regions.
+- **Audit Viewer**: Full history of KYC attempts with searchable compliance results.
 
 ---
 
