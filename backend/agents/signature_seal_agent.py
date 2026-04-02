@@ -253,7 +253,6 @@ def _detect_pasted_elements(img) -> dict:
         # Statistics
         mean_edge = np.mean(edge_magnitude)
         max_edge = np.max(edge_magnitude)
-        std_edge = np.std(edge_magnitude)
 
         # Edge ratio: how much sharper are the sharpest edges vs. average
         edge_ratio = max_edge / mean_edge if mean_edge > 0 else 0

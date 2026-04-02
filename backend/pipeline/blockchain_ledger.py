@@ -19,7 +19,7 @@ import json
 
 from loguru import logger
 from sqlalchemy import (
-    Column, DateTime, Integer, String, Text, Float,
+    Column, DateTime, Integer, String, Text,
     create_engine, desc,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker

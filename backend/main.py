@@ -17,14 +17,11 @@ Pipeline flow (target: 2-4 sec on CPU):
 """
 
 import os
-import shutil
 import time
 import uuid
-from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 
 from agents.deepfake_agent import analyze_deepfake
@@ -188,7 +185,7 @@ async def verify_document_endpoint(
         clean_path = preprocess(save_path, output_dir=str(UPLOAD_DIR))
 
         # ═══ STAGE 3: Run Agents (PARALLEL for speed) ═══
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from concurrent.futures import ThreadPoolExecutor
 
         # --- Helper: run OCR and immediately run Text Integrity to minimize waiting ---
         def _run_ocr_and_text_integrity(path):

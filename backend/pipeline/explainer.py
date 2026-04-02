@@ -11,8 +11,6 @@ Now covers 9 signal types including Signature/Seal, Text Integrity,
 and Blockchain Ledger verification.
 """
 
-import os
-
 from loguru import logger
 
 from config import GEMINI_API_KEY, GEMINI_MODEL

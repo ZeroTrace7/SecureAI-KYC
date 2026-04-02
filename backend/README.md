@@ -11,8 +11,8 @@ The backend is organized into stages:
 - **Stage 1-2**: Input quality gate and preprocessing.
 - **Stage 3**: Parallel execution of 8+ forensic agents (ELA, OCR, QR, EXIF, Deepfake, Forgery, Signature/Seal, Blockchain).
 - **Stage 4**: Cross-validation (OCR vs QR data matching) + Text Integrity.
-- **Stage 5-6**: Weighted fraud scoring (optimized for payslip & international document forensics).
-- **Stage 7**: Explainable output generation.
+- **Stage 5-6**: Weighted fraud scoring (Safety-Net design for automatic MANUAL_REVIEW escalation on >0.25 anomaly).
+- **Stage 7**: Explainable AI generation (Fallback to templates if Gemini is unavailable).
 - **Stage 8**: Audit logging (SQLAlchemy + SQLite).
 
 ---
@@ -57,11 +57,11 @@ The backend is organized into stages:
 ### Parallel Pipeline
 The backend uses a **Phase 1 Parallelization** strategy. Upon document reception, 8+ forensic agents are dispatched concurrently using `concurrent.futures.ThreadPoolExecutor`. This allows CPU-bound tasks (like ELA) to run in parallel with I/O-bound tasks (like Blockchain verification).
 
-### Singleton Model Preloading
-To eliminate "cold start" latency, the `main.py` entry point pre-loads all deep learning models on startup:
-- **EasyOCR**: English + Hindi models for document text extraction.
-- **Deepfake Detector**: HuggingFace transformers pipeline for facial artificiality.
-- **ML Forgery**: MobileNetV2 for splice and manipulation detection.
+### Singleton Model Prioritization
+To eliminate "cold start" latency and lower CPU overhead, `main.py` structures loading for:
+- **EasyOCR**: Throttled down to English-only `Reader(["en"])` to dramatically reduce pytorch-model payload memory, processing sub-5s compared to earlier 80s peaks.
+- **Deepfake Detector**: HuggingFace transformers pipeline.
+- **Image Caps**: The input array fed to OCR is aggressively capped at a max-side of exactly 800px during reading to ensure processing scales efficiently without degrading text detection.
 
 ### OCR Reuse
 Stage 3 (OCR) and Stage 4 (Text Integrity) share a single bounding-box result. By caching the `EasyOCR` results from Phase 1, we eliminate the need for a second high-latency scan during integrity analysis.

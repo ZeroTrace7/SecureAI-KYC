@@ -38,9 +38,9 @@ The frontend is designed to be:
 
 ## 📋 Features
 
-- **Forensic Pipeline Visualization**: Real-time progress through all parallel stages (OCR, EXIF, ELA, Seal, Deepfake, etc.).
-- **Fraud Score Dashboard**: Deep-dive into 10 signal scores with interactive gauges and weight breakdowns.
-- **ELA Heatmap Visualization**: Direct view of tampered document regions.
+- **Forensic Pipeline Visualization**: Real-time progress through all parallel stages via color-coded Agent Check Cards.
+- **Fraud Score Dashboard**: 4-Tier verification ring (`GENUINE`, `MANUAL_REVIEW`, `SUSPICIOUS`, `FORGED`).
+- **Cross-Validation Table**: Real-time cross-referencing between OCR-extracted identity payloads and Signed QR representations.
 - **Audit Viewer**: Full history of KYC attempts with searchable compliance results.
 - **Dynamic Identity Management**: Simulates multiple user logins via randomized usernames and dynamic avatars.
 - **Dynamic Brand Identity**: Animated "Satya KYC" / "SecureAI-KYC" crossfade branding component.

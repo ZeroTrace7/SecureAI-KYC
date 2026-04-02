@@ -22,7 +22,7 @@ Base weights (7 active signals):
 
 from loguru import logger
 
-from config import (DEEPFAKE_THRESHOLD, ELA_THRESHOLD, FRAUD_SCORE_THRESHOLD,
+from config import (ELA_THRESHOLD, FRAUD_SCORE_THRESHOLD,
                     WEIGHT_BLOCKCHAIN, WEIGHT_DEEPFAKE, WEIGHT_ELA,
                     WEIGHT_EXIF, WEIGHT_QR_OCR_MISMATCH,
                     WEIGHT_SIGNATURE_SEAL, WEIGHT_STRUCTURED_VALIDATION,

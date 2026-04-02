@@ -1,7 +1,3 @@
-import os
-import sys
-
-
 def cache_huggingface_models():
     """Download only the essential HF models (optimized: ~350 MB total)."""
     try:
