@@ -67,3 +67,8 @@ tools/*.exe
 # Tokens
 credentials.json
 token.json
+
+# Test Outputs
+backend/pipeline_output.txt
+backend/pipeline_health.json
+all_files.txt
