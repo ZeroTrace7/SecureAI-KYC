@@ -96,6 +96,7 @@ DOC_TYPE_PROFILE = {
         "expects_face": False,
         "expects_signature": False,    # Most payslips are digital
         "expects_seal": False,         # No seal expected
+        "expects_text_integrity": True, # Font/layout is critical — #1 payslip forgery technique
         "expects_structured_validation": True,  # PRIMARY: arithmetic, format, field checks
         "rigid_template": False,       # Variable layouts across employers
         "weight_mods": {
@@ -114,6 +115,7 @@ DOC_TYPE_PROFILE = {
         "expects_face": False,
         "expects_signature": False,
         "expects_seal": False,
+        "expects_text_integrity": True,
         "expects_structured_validation": True,
         "rigid_template": False,
         "weight_mods": {
@@ -132,6 +134,7 @@ DOC_TYPE_PROFILE = {
         "expects_face": False,
         "expects_signature": False,
         "expects_seal": False,
+        "expects_text_integrity": True,
         "expects_structured_validation": True,
         "rigid_template": False,
         "weight_mods": {
@@ -404,6 +407,36 @@ def compute_fraud_score(signals: dict) -> dict:
                 f"(raw_signal={sv_raw:.3f}, penalty=+{sv_penalty:.1f}) — "
                 f"arithmetic/format inconsistencies detected"
             )
+
+    # ── Critical: Text integrity failure on financial documents ──
+    # Font substitution is the #1 payslip forgery technique. Forgers match the
+    # arithmetic perfectly but use a different font (Calibri vs CourierNew, etc.).
+    # Text integrity is often the ONLY signal that catches these forgeries.
+    if profile.get("expects_text_integrity"):
+        ti_data = breakdown.get("text_integrity", {})
+        ti_raw = ti_data.get("raw_signal", 0)
+        if ti_raw > 0.2:  # Lower threshold — even mild font inconsistency is suspicious
+            # Direct penalty: 11 points for mild (0.2), up to 30 for severe (0.55+)
+            ti_penalty = min(30.0, ti_raw * 55.0)
+            fraud_score += ti_penalty
+            critical_penalty_applied = True
+            logger.warning(
+                f"Scorer: Text integrity critical failure on '{doc_type}' "
+                f"(raw_signal={ti_raw:.3f}, penalty=+{ti_penalty:.1f}) — "
+                f"font/layout inconsistency on financial document"
+            )
+
+    # ── If any critical expected-feature penalty fired, ensure minimum SUSPICIOUS ──
+    # A document that failed an expected forensic check (sig/seal on ID, structured
+    # validation or text integrity on payslip) should NEVER be marked GENUINE.
+    if critical_penalty_applied:
+        suspicious_threshold = FRAUD_SCORE_THRESHOLD * 0.6
+        if fraud_score < suspicious_threshold:
+            logger.info(
+                f"Scorer: Critical penalty floor — bumping score from "
+                f"{fraud_score:.1f} to {suspicious_threshold:.1f} (SUSPICIOUS minimum)"
+            )
+            fraud_score = suspicious_threshold
 
     # ── Corroboration check ──
     # A single noisy agent should NOT push a document to FORGED by itself.
