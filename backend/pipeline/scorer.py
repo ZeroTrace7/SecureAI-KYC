@@ -43,15 +43,15 @@ DOC_TYPE_PROFILE = {
     "aadhaar": {
         "expects_qr": True,
         "expects_face": True,
-        "expects_signature": False,
-        "expects_seal": False,
+        "expects_signature": True,     # Aadhaar has authorized signatory
+        "expects_seal": True,          # UIDAI embossed seal / emblem
         "rigid_template": True,
         "weight_mods": {
             "qr_ocr_mismatch": 1.3,   # QR-OCR is the kill feature for Aadhaar
             "ela": 1.0,
             "text_integrity": 0.6,     # Mixed script (Devanagari+Latin) = naturally variable
-            "signature_seal": 0.0,     # Aadhaar has no traditional seal/signature
-            "deepfake": 1.2,           # Face photo matters
+            "signature_seal": 0.8,     # UIDAI embossed seal + authorized signatory present
+            "deepfake": 0.3,           # Noisy on small compressed ID photos — secondary signal
             "exif": 1.0,
             "blockchain": 1.0,
             "structured_validation": 0.5,  # Secondary for IDs
@@ -67,8 +67,8 @@ DOC_TYPE_PROFILE = {
             "qr_ocr_mismatch": 0.0,   # PAN cards don't have QR
             "ela": 1.0,
             "text_integrity": 0.6,     # Mixed script, multiple fonts
-            "signature_seal": 0.3,     # Only care about signature, not seal
-            "deepfake": 1.2,           # Face photo matters
+            "signature_seal": 0.6,     # PAN has a signature line + Income Tax Dept emblem
+            "deepfake": 0.8,           # Face photo matters but model is noisy on IDs
             "exif": 1.0,
             "blockchain": 1.0,
             "structured_validation": 0.5,  # Secondary for IDs
@@ -85,7 +85,7 @@ DOC_TYPE_PROFILE = {
             "ela": 1.0,
             "text_integrity": 0.7,
             "signature_seal": 1.0,     # Both expected
-            "deepfake": 1.5,           # Face swap is primary attack vector
+            "deepfake": 1.0,           # Face swap is primary attack vector for passports
             "exif": 1.0,
             "blockchain": 1.0,
             "structured_validation": 0.3,  # Less relevant for passports
@@ -252,9 +252,13 @@ def compute_fraud_score(signals: dict) -> dict:
     effective_ela_weight = WEIGHT_ELA * mods.get("ela", 1.0)
 
     if ela_score is not None and effective_ela_weight > 0:
-        ela_signal = (
-            min(1.0, max(0.0, ela_score / ELA_THRESHOLD)) if ELA_THRESHOLD > 0 else 0
-        )
+        # Deadband: scores well below threshold are clearly clean — no signal
+        if ela_score < ELA_THRESHOLD * 0.5:
+            ela_signal = 0.0
+        else:
+            ela_signal = (
+                min(1.0, max(0.0, ela_score / ELA_THRESHOLD)) if ELA_THRESHOLD > 0 else 0
+            )
         weighted_sum += ela_signal * effective_ela_weight
         total_weight += effective_ela_weight
         breakdown["ela"] = {
@@ -285,7 +289,7 @@ def compute_fraud_score(signals: dict) -> dict:
         if exif_flag == "suspicious":
             exif_signal = 1.0
         elif exif_flag == "notable":
-            exif_signal = 0.5
+            exif_signal = 0.15  # Most legitimate docs lack EXIF (scans, DigiLocker, screenshots)
         else:
             exif_signal = 0.0
         weighted_sum += exif_signal * effective_exif_weight
@@ -405,9 +409,12 @@ def compute_fraud_score(signals: dict) -> dict:
                 f"Scorer: Escalating doc from GENUINE → SUSPICIOUS — "
                 f"multiple signals {suspicious_signals} are elevated. Score bumped to {fraud_score}."
             )
-        elif len(suspicious_signals) == 1 and doc_type in ("other", "salary_slip"):
+        elif len(suspicious_signals) == 1 and doc_type == "other":
+            # Only escalate "other" (unrecognized) document types on a single signal.
+            # Salary slips, utility bills, etc. have known profiles — a single
+            # moderate signal (e.g. text_integrity at 0.30 on a variable-layout
+            # payslip) is expected noise, NOT evidence of forgery.
             decision = "MANUAL_REVIEW"
-            # Artificially bump the score to be noticeably higher
             fraud_score = max(fraud_score, (FRAUD_SCORE_THRESHOLD * 0.45))
             logger.warning(
                 f"Scorer: Escalating doc from GENUINE → MANUAL_REVIEW — "

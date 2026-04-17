@@ -4,11 +4,15 @@ import { motion } from 'framer-motion';
 import { Activity, TrendingUp, TrendingDown, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
 
 const SIGNAL_DATA = [
-  { name: 'ELA Pixel Analysis', flagRate: 34, avgScore: 0.61, trend: 'up' },
-  { name: 'EXIF Metadata', flagRate: 22, avgScore: 0.48, trend: 'down' },
-  { name: 'QR Cross-Validation', flagRate: 19, avgScore: 0.71, trend: 'up' },
-  { name: 'OCR Font Check', flagRate: 8, avgScore: 0.29, trend: 'down' },
-  { name: 'Face Swap Detection', flagRate: 6, avgScore: 0.21, trend: 'down' },
+  { name: 'QR-OCR Cross-Validation', flagRate: 28, avgScore: 0.71, trend: 'up', weight: '25%' },
+  { name: 'Structured Doc Validation', flagRate: 22, avgScore: 0.54, trend: 'up', weight: '20%' },
+  { name: 'ELA Pixel Forensics', flagRate: 34, avgScore: 0.61, trend: 'up', weight: '18%' },
+  { name: 'ML Image Forgery', flagRate: 18, avgScore: 0.42, trend: 'down', weight: '15%' },
+  { name: 'Signature & Seal', flagRate: 14, avgScore: 0.38, trend: 'down', weight: '12%' },
+  { name: 'EXIF Metadata', flagRate: 22, avgScore: 0.48, trend: 'down', weight: '10%' },
+  { name: 'Text Integrity', flagRate: 11, avgScore: 0.29, trend: 'down', weight: '10%' },
+  { name: 'Deepfake Detection', flagRate: 6, avgScore: 0.21, trend: 'down', weight: '7%' },
+  { name: 'Blockchain Ledger', flagRate: 3, avgScore: 0.12, trend: 'down', weight: '5%' },
 ];
 
 const RECENT_ALERTS = [
@@ -83,7 +87,10 @@ export default function AnalyticsPage() {
               return (
                 <div key={i}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-300 font-medium">{sig.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-300 font-medium">{sig.name}</span>
+                      <span className="text-[10px] text-indigo-400/60 bg-indigo-500/10 px-1.5 py-0.5 rounded font-bold">{sig.weight}</span>
+                    </div>
                     <div className="flex items-center gap-3">
                       <Trend className={`w-4 h-4 ${sig.trend === 'up' ? 'text-red-400' : 'text-emerald-400'}`} />
                       <span className="text-xs text-slate-500 tabular-nums">{sig.flagRate}% flag rate</span>

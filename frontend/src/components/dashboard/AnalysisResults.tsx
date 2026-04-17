@@ -100,14 +100,19 @@ function AgentCard({ icon: Icon, title, description, passed, failed, delay }: {
 export default function AnalysisResults({ fileName, preview, onReset, apiData, docType = 'auto' }: Props) {
   const riskScore = apiData?.fraud_score || 0;
   const decision = apiData?.decision || 'UNKNOWN';
-  const isForged = decision === 'FORGED' || decision === 'SUSPICIOUS' || decision === 'REJECTED';
+  const isForged = decision === 'FORGED' || decision === 'REJECTED';
+  const isSuspicious = decision === 'SUSPICIOUS' || decision === 'MANUAL_REVIEW';
+  const isClean = decision === 'GENUINE';
   const circumference = 2 * Math.PI * 80;
 
   const aiExplanation = apiData?.explanation || "Analysis complete. Awaiting detailed explanation.";
 
   const { displayed: typedExplanation, done: typingDone } = useTypewriter(aiExplanation, 18);
 
-  // ── Derived states for new agents ──
+  // ── Derived states for agents ──
+  const elaData = apiData?.ela || {};
+  const elaScore = elaData?.ela_score ?? null;
+
   const sigSeal = apiData?.signature_seal || {};
   const sealFound = sigSeal?.seal?.seal_found || false;
   const sigFound = sigSeal?.signature?.signature_found || false;
@@ -127,6 +132,10 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
 
   const mlForgeryData = apiData?.ml_forgery || {};
   const mlScore = mlForgeryData?.ml_forgery_score !== null && mlForgeryData?.ml_forgery_score !== undefined ? mlForgeryData?.ml_forgery_score : null;
+
+  const structuredData = apiData?.structured_validation || {};
+  const structuredScore = structuredData?.structured_validation_score ?? null;
+  const structuredIssues = structuredData?.issues || structuredData?.failures || [];
 
   return (
     <motion.div
@@ -151,10 +160,12 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
               className={`text-xs px-3 py-1.5 border rounded-full font-bold ${
                 isForged 
                   ? 'bg-red-500/10 border-red-500/20 text-red-400' 
+                  : isSuspicious
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
                   : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
               }`}
             >
-              {isForged ? (decision === 'REJECTED' ? '⛔ Rejected — Invalid Document' : '⚠ Forged / Tampered') : '✓ Genuine'}
+              {isForged ? (decision === 'REJECTED' ? '⛔ Rejected — Invalid Document' : '⚠ Forged / Tampered') : isSuspicious ? (decision === 'MANUAL_REVIEW' ? '⏳ Manual Review Required' : '⚠ Suspicious') : '✓ Genuine'}
             </motion.span>
           </h2>
         </div>
@@ -178,7 +189,7 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
           style={{ backdropFilter: 'blur(16px)', background: 'rgba(15, 23, 42, 0.6)' }}
         >
           {/* Background glow */}
-          <div className={`absolute top-0 right-0 w-40 h-40 blur-[80px] opacity-25 rounded-full ${isForged ? 'bg-red-500' : 'bg-emerald-500'}`} />
+          <div className={`absolute top-0 right-0 w-40 h-40 blur-[80px] opacity-25 rounded-full ${isForged ? 'bg-red-500' : isSuspicious ? 'bg-amber-500' : 'bg-emerald-500'}`} />
           
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-8">Fraud Risk Score</p>
           
@@ -193,7 +204,7 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
                 fill="transparent"
                 strokeWidth="8"
                 strokeLinecap="round"
-                className={isForged ? 'text-red-500' : 'text-emerald-500'}
+                className={isForged ? 'text-red-500' : isSuspicious ? 'text-amber-500' : 'text-emerald-500'}
                 stroke="currentColor"
                 strokeDasharray={circumference}
                 initial={{ strokeDashoffset: circumference }}
@@ -202,13 +213,13 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
               />
             </svg>
             <div className="flex flex-col items-center">
-              <AnimatedScore target={riskScore} color={isForged ? 'text-red-400' : 'text-emerald-400'} />
+              <AnimatedScore target={riskScore} color={isForged ? 'text-red-400' : isSuspicious ? 'text-amber-400' : 'text-emerald-400'} />
               <span className="text-xs text-slate-500 font-bold mt-1">/ 100</span>
             </div>
           </div>
           
-          <p className={`text-sm font-medium ${isForged ? 'text-red-400' : 'text-emerald-400'}`}>
-            {decision === 'GENUINE' ? 'Genuine' : decision === 'SUSPICIOUS' ? 'Suspicious — Manual Review' : decision === 'REJECTED' ? 'Rejected — Invalid Document' : 'Forged — Auto-Rejected'}
+          <p className={`text-sm font-medium ${isForged ? 'text-red-400' : isSuspicious ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {decision === 'GENUINE' ? 'Genuine — Verified' : decision === 'MANUAL_REVIEW' ? 'Manual Review Required' : decision === 'SUSPICIOUS' ? 'Suspicious — Needs Review' : decision === 'REJECTED' ? 'Rejected — Invalid Document' : 'Forged — Auto-Rejected'}
           </p>
         </motion.div>
 
@@ -230,27 +241,35 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
               <Database className="w-4 h-4 text-indigo-400" /> Cross-Validation: OCR ↔ QR Data
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { label: 'OCR Name', value: apiData?.ocr?.fields?.name || 'N/A', match: true },
-                { label: 'QR Name', value: apiData?.qr?.qr_name || 'N/A', match: apiData?.cross_validation?.name_similarity > 80 },
-                { label: 'Similarity Score', value: `${apiData?.cross_validation?.name_similarity || 0}%`, match: true },
-                { label: 'QR Found', value: apiData?.qr?.has_qr ? 'Yes' : 'No', match: apiData?.qr?.has_qr },
-              ].map((field, i) => (
-                <div key={i} className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{field.label}</span>
-                  <p className={`text-sm font-medium ${field.match ? 'text-slate-200' : 'text-red-400 line-through'}`}>
-                    {field.value}
-                  </p>
-                  {!field.match && <span className="text-[10px] text-red-400 font-bold">MISMATCH</span>}
-                </div>
-              ))}
+              {(() => {
+                const hasQR = apiData?.qr?.has_qr;
+                const crossValAvailable = apiData?.cross_validation?.qr_ocr_match !== null && apiData?.cross_validation?.qr_ocr_match !== undefined;
+                const fields = [
+                  { label: 'OCR Name', value: apiData?.ocr?.fields?.name || 'N/A', match: true, skipped: false },
+                  { label: 'QR Name', value: hasQR ? (apiData?.qr?.qr_name || 'N/A') : 'N/A', match: hasQR ? apiData?.cross_validation?.name_similarity > 80 : true, skipped: !hasQR },
+                  { label: 'Similarity Score', value: crossValAvailable ? `${apiData?.cross_validation?.name_similarity || 0}%` : 'N/A', match: true, skipped: !crossValAvailable },
+                  { label: 'QR Found', value: hasQR ? 'Yes' : 'No', match: hasQR, skipped: false },
+                ];
+                return fields.map((field, i) => (
+                  <div key={i} className="space-y-1">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{field.label}</span>
+                    <p className={`text-sm font-medium ${field.skipped ? 'text-slate-500 italic' : field.match ? 'text-slate-200' : 'text-red-400 line-through'}`}>
+                      {field.value}
+                    </p>
+                    {field.skipped && <span className="text-[10px] text-slate-500 font-bold">SKIPPED</span>}
+                    {!field.skipped && !field.match && <span className="text-[10px] text-red-400 font-bold">MISMATCH</span>}
+                  </div>
+                ));
+              })()}
             </div>
           </motion.div>
         </motion.div>
       </div>
 
-      {/* ─── Multi-Agent Grid (7 cards) ─── */}
+      {/* ─── Multi-Agent Forensic Grid (11 signals) ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+
+        {/* 1. Quality Gate */}
         <AgentCard
           icon={Shield}
           title="Integrity Validation"
@@ -261,76 +280,60 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
           failed={!apiData?.quality?.quality_pass}
           delay={0.4}
         />
+
+        {/* 2. Classifier + OCR */}
         <AgentCard
           icon={ScanEye}
           title="Classification & OCR"
           description={`Identified as ${apiData?.document_type || 'Unknown'}. OCR extracted ${Object.keys(apiData?.ocr?.fields || {}).length} target fields.`}
           passed={apiData?.document_type !== 'unknown'}
           failed={apiData?.document_type === 'unknown'}
-          delay={0.5}
+          delay={0.45}
         />
+
+        {/* 3. ELA Pixel Forensics */}
         <AgentCard
           icon={Fingerprint}
-          title="EXIF Metadata & Deepfake"
-          description={`EXIF: ${apiData?.exif?.exif_flag || 'clean'}. Deepfake Score: ${apiData?.deepfake?.deepfake_score ?? 'N/A'}.`}
-          passed={apiData?.exif?.exif_flag === 'clean' && (!apiData?.deepfake?.deepfake_score || apiData?.deepfake?.deepfake_score < 0.5)}
-          failed={apiData?.exif?.exif_flag !== 'clean' || (apiData?.deepfake?.deepfake_score && apiData?.deepfake?.deepfake_score >= 0.5)}
+          title="ELA Pixel Forensics"
+          description={
+            elaScore !== null
+              ? (elaScore < 0.3
+                ? `No significant compression artifacts detected. Error level variance: ${elaScore.toFixed(3)}.`
+                : `⚠ Compression inconsistencies detected — possible pixel manipulation. ELA variance: ${elaScore.toFixed(3)}.`)
+              : 'ELA analysis not available for this document.'
+          }
+          passed={elaScore !== null && elaScore < 0.3}
+          failed={elaScore !== null && elaScore >= 0.3}
+          delay={0.5}
+        />
+
+        {/* 4. EXIF Metadata Analysis */}
+        <AgentCard
+          icon={Eye}
+          title="EXIF Metadata Analysis"
+          description={`EXIF flag: ${apiData?.exif?.exif_flag || 'clean'}. ${apiData?.exif?.software ? `Editing software detected: ${apiData.exif.software}.` : 'No editing software signatures found.'}`}
+          passed={apiData?.exif?.exif_flag === 'clean'}
+          failed={apiData?.exif?.exif_flag !== 'clean'}
+          delay={0.55}
+        />
+
+        {/* 5. Deepfake Detection */}
+        <AgentCard
+          icon={AlertTriangle}
+          title="Deepfake Detection"
+          description={
+            apiData?.deepfake?.deepfake_score !== null && apiData?.deepfake?.deepfake_score !== undefined
+              ? (apiData.deepfake.deepfake_score < 0.5
+                ? `Face appears authentic. Confidence: ${((1 - apiData.deepfake.deepfake_score) * 100).toFixed(1)}% real.`
+                : `⚠ Synthetic face artifacts detected. Deepfake probability: ${(apiData.deepfake.deepfake_score * 100).toFixed(1)}%.`)
+              : 'No face detected or deepfake analysis was not triggered.'
+          }
+          passed={!apiData?.deepfake?.deepfake_score || apiData?.deepfake?.deepfake_score < 0.5}
+          failed={apiData?.deepfake?.deepfake_score && apiData?.deepfake?.deepfake_score >= 0.5}
           delay={0.6}
         />
-        <AgentCard
-          icon={FileText}
-          title="QR Signature Verification"
-          description={apiData?.qr?.has_qr 
-            ? 'UIDAI secure QR decoded successfully. Payload cross-verified.'
-            : 'No QR code detected or decoding failed on this standard document format.'}
-          passed={apiData?.qr?.has_qr}
-          failed={!apiData?.qr?.has_qr && apiData?.document_type === 'aadhaar'}
-          delay={0.7}
-        />
 
-        {/* ── NEW: Signature & Seal Verification ── */}
-        <AgentCard
-          icon={PenTool}
-          title="Signature & Seal Verification"
-          description={
-            sigSealAnomalies.length > 0
-              ? `Anomalies detected: ${sigSealAnomalies.slice(0, 2).join('; ')}. Seal: ${sealFound ? 'Found' : 'None'}. Signature: ${sigFound ? 'Found' : 'None'}.`
-              : `Seal: ${sealFound ? 'Detected ✓' : 'Not detected'}. Signature: ${sigFound ? 'Detected ✓' : 'Not detected'}. No irregularities found.`
-          }
-          passed={sigSealScore < 0.25}
-          failed={sigSealScore >= 0.25}
-          delay={0.8}
-        />
-
-        {/* ── NEW: Text Integrity Analysis ── */}
-        <AgentCard
-          icon={Type}
-          title="Text Integrity Analysis"
-          description={
-            tiScore > 0.25
-              ? `Anomalies detected — Font: ${fontOk ? 'OK' : '⚠ Inconsistent'}, Confidence: ${confOk ? 'OK' : '⚠ Variable'}, Layout: ${layoutOk ? 'OK' : '⚠ Irregular'}. Score: ${tiScore.toFixed(3)}.`
-              : `All checks passed — Font consistency: OK, OCR confidence: Uniform, Spatial layout: Regular. Score: ${tiScore.toFixed(3)}.`
-          }
-          passed={tiScore <= 0.25}
-          failed={tiScore > 0.25}
-          delay={0.9}
-        />
-
-        {/* ── NEW: Blockchain Ledger ── */}
-        <AgentCard
-          icon={Link}
-          title="Blockchain Hash Ledger"
-          description={
-            bcSeen
-              ? `Document previously registered in ledger. Chain integrity: ${bcChainValid ? 'Valid ✓' : '⚠ Broken'}. Total blocks: ${bcTotalBlocks}.`
-              : `First-time submission — no prior record. Registered in hash chain. Chain integrity: ${bcChainValid ? 'Valid ✓' : '⚠ Broken'}. Blocks: ${bcTotalBlocks}.`
-          }
-          passed={bcChainValid && !(bcSeen && (blockchain?.blockchain_score || 0) > 0.5)}
-          failed={!bcChainValid || (bcSeen && (blockchain?.blockchain_score || 0) > 0.5)}
-          delay={1.0}
-        />
-
-        {/* ── NEW: ML Forgery Detection ── */}
+        {/* 6. ML Forgery Engine */}
         <AgentCard
           icon={Cpu}
           title="ML Spatial Forgery"
@@ -343,18 +346,76 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
           }
           passed={mlScore !== null && mlScore < 0.5}
           failed={mlScore !== null && mlScore >= 0.5}
-          delay={1.1}
+          delay={0.65}
         />
-        {docType === 'payslip' && (
+
+        {/* 7. QR Signature Verification */}
+        <AgentCard
+          icon={FileText}
+          title="QR Signature Verification"
+          description={apiData?.qr?.has_qr 
+            ? 'UIDAI secure QR decoded successfully. Payload cross-verified against OCR fields.'
+            : 'No QR code detected or decoding failed on this standard document format.'}
+          passed={apiData?.qr?.has_qr}
+          failed={!apiData?.qr?.has_qr && apiData?.document_type === 'aadhaar'}
+          delay={0.7}
+        />
+
+        {/* 8. Signature & Seal Verification */}
+        <AgentCard
+          icon={PenTool}
+          title="Signature & Seal Verification"
+          description={
+            sigSealAnomalies.length > 0
+              ? `Anomalies detected: ${sigSealAnomalies.slice(0, 2).join('; ')}. Seal: ${sealFound ? 'Found' : 'None'}. Signature: ${sigFound ? 'Found' : 'None'}.`
+              : `Seal: ${sealFound ? 'Detected ✓' : 'Not detected'}. Signature: ${sigFound ? 'Detected ✓' : 'Not detected'}. No irregularities found.`
+          }
+          passed={sigSealScore < 0.25}
+          failed={sigSealScore >= 0.25}
+          delay={0.75}
+        />
+
+        {/* 9. Text Integrity Analysis */}
+        <AgentCard
+          icon={Type}
+          title="Text Integrity Analysis"
+          description={
+            tiScore > 0.25
+              ? `Anomalies detected — Font: ${fontOk ? 'OK' : '⚠ Inconsistent'}, Confidence: ${confOk ? 'OK' : '⚠ Variable'}, Layout: ${layoutOk ? 'OK' : '⚠ Irregular'}. Score: ${tiScore.toFixed(3)}.`
+              : `All checks passed — Font consistency: OK, OCR confidence: Uniform, Spatial layout: Regular. Score: ${tiScore.toFixed(3)}.`
+          }
+          passed={tiScore <= 0.25}
+          failed={tiScore > 0.25}
+          delay={0.8}
+        />
+
+        {/* 10. Blockchain Hash Ledger */}
+        <AgentCard
+          icon={Link}
+          title="Blockchain Hash Ledger"
+          description={
+            bcSeen
+              ? `Document previously registered in ledger. Chain integrity: ${bcChainValid ? 'Valid ✓' : '⚠ Broken'}. Total blocks: ${bcTotalBlocks}.`
+              : `First-time submission — no prior record. Registered in hash chain. Chain integrity: ${bcChainValid ? 'Valid ✓' : '⚠ Broken'}. Blocks: ${bcTotalBlocks}.`
+          }
+          passed={bcChainValid && !(bcSeen && (blockchain?.blockchain_score || 0) > 0.5)}
+          failed={!bcChainValid || (bcSeen && (blockchain?.blockchain_score || 0) > 0.5)}
+          delay={0.85}
+        />
+
+        {/* 11. Structured Document Validation (shows when structured data exists) */}
+        {structuredScore !== null && structuredScore !== undefined && (
           <AgentCard
             icon={IndianRupee}
-            title="Income & Employer Verification"
-            description={isForged
-              ? 'Gross pay figure inconsistent with PF deduction percentage. Employer PAN format invalid. Suspected fabricated payslip.'
-              : 'Gross pay, basic, HRA, and PF deductions are internally consistent. Employer PAN verified against MCA database. Payslip is authentic.'}
-            passed={!isForged}
-            failed={isForged}
-            delay={1.2}
+            title="Structured Document Validation"
+            description={
+              structuredScore < 0.25
+                ? `All field-level checks passed. Arithmetic totals, format checksums, and character-class validations are consistent. Score: ${structuredScore.toFixed(3)}.`
+                : `⚠ Structural anomalies detected${structuredIssues.length > 0 ? `: ${structuredIssues.slice(0, 2).join('; ')}` : ''}. Arithmetic or format inconsistencies found. Score: ${structuredScore.toFixed(3)}.`
+            }
+            passed={structuredScore < 0.25}
+            failed={structuredScore >= 0.25}
+            delay={0.9}
           />
         )}
       </div>
