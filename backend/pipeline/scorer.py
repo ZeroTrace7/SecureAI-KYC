@@ -50,7 +50,7 @@ DOC_TYPE_PROFILE = {
             "qr_ocr_mismatch": 1.3,   # QR-OCR is the kill feature for Aadhaar
             "ela": 1.0,
             "text_integrity": 0.6,     # Mixed script (Devanagari+Latin) = naturally variable
-            "signature_seal": 0.8,     # UIDAI embossed seal + authorized signatory present
+            "signature_seal": 1.5,     # UIDAI embossed seal + authorized signatory — primary signal
             "deepfake": 0.3,           # Noisy on small compressed ID photos — secondary signal
             "exif": 1.0,
             "blockchain": 1.0,
@@ -67,7 +67,7 @@ DOC_TYPE_PROFILE = {
             "qr_ocr_mismatch": 0.0,   # PAN cards don't have QR
             "ela": 1.0,
             "text_integrity": 0.6,     # Mixed script, multiple fonts
-            "signature_seal": 0.6,     # PAN has a signature line + Income Tax Dept emblem
+            "signature_seal": 1.2,     # PAN has a signature line + Income Tax Dept emblem
             "deepfake": 0.8,           # Face photo matters but model is noisy on IDs
             "exif": 1.0,
             "blockchain": 1.0,
@@ -96,6 +96,7 @@ DOC_TYPE_PROFILE = {
         "expects_face": False,
         "expects_signature": False,    # Most payslips are digital
         "expects_seal": False,         # No seal expected
+        "expects_structured_validation": True,  # PRIMARY: arithmetic, format, field checks
         "rigid_template": False,       # Variable layouts across employers
         "weight_mods": {
             "qr_ocr_mismatch": 0.0,   # No QR on payslips
@@ -105,7 +106,7 @@ DOC_TYPE_PROFILE = {
             "deepfake": 0.0,           # No face on payslips
             "exif": 2.0,              # Increased: Editor metadata is strong evidence
             "blockchain": 1.0,
-            "structured_validation": 1.3,  # PRIMARY detector for payslips
+            "structured_validation": 1.5,  # PRIMARY detector for payslips
         },
     },
     "utility_bill": {
@@ -113,6 +114,7 @@ DOC_TYPE_PROFILE = {
         "expects_face": False,
         "expects_signature": False,
         "expects_seal": False,
+        "expects_structured_validation": True,
         "rigid_template": False,
         "weight_mods": {
             "qr_ocr_mismatch": 0.0,
@@ -130,6 +132,7 @@ DOC_TYPE_PROFILE = {
         "expects_face": False,
         "expects_signature": False,
         "expects_seal": False,
+        "expects_structured_validation": True,
         "rigid_template": False,
         "weight_mods": {
             "qr_ocr_mismatch": 0.0,
@@ -362,16 +365,58 @@ def compute_fraud_score(signals: dict) -> dict:
     else:
         fraud_score = 0.0
 
+    # ── Critical expected-feature failure ──
+    # If a document type EXPECTS seal/signature and the agent detects anomalies,
+    # add a direct penalty that bypasses weighted-average dilution.
+    # Without this, clean agents (ELA=0, blockchain=0) average DOWN the fraud
+    # score of a document with a clearly forged seal.
+    critical_penalty_applied = False
+
+    if profile.get("expects_seal") or profile.get("expects_signature"):
+        ss_data = breakdown.get("signature_seal", {})
+        ss_raw = ss_data.get("raw_signal", 0)
+        if ss_raw > 0.4:
+            # Direct penalty: 15 points for moderate anomalies, up to 25 for severe
+            penalty = min(25.0, ss_raw * 30.0)
+            fraud_score += penalty
+            critical_penalty_applied = True
+            logger.warning(
+                f"Scorer: Seal/Signature critical failure on '{doc_type}' "
+                f"(raw_signal={ss_raw:.3f}, penalty=+{penalty:.1f}) — "
+                f"document type expects seal={profile.get('expects_seal')} "
+                f"sig={profile.get('expects_signature')}"
+            )
+
+    # ── Critical: Structured validation failure on financial documents ──
+    # Payslips, utility bills, and invoices rely on structured validation as
+    # their PRIMARY forensic signal (arithmetic totals, format checksums, etc.).
+    # A failure here is equivalent to a sig/seal failure on an identity document.
+    if profile.get("expects_structured_validation"):
+        sv_data = breakdown.get("structured_validation", {})
+        sv_raw = sv_data.get("raw_signal", 0)
+        if sv_raw > 0.3:
+            # Direct penalty: 20 points for moderate, up to 30 for severe
+            sv_penalty = min(30.0, sv_raw * 40.0)
+            fraud_score += sv_penalty
+            critical_penalty_applied = True
+            logger.warning(
+                f"Scorer: Structured validation critical failure on '{doc_type}' "
+                f"(raw_signal={sv_raw:.3f}, penalty=+{sv_penalty:.1f}) — "
+                f"arithmetic/format inconsistencies detected"
+            )
+
     # ── Corroboration check ──
     # A single noisy agent should NOT push a document to FORGED by itself.
     # Require at least 2 independent signals firing > 0.3 for FORGED verdict.
+    # Exception: if a critical expected-feature penalty was applied, the document
+    # type profile already validated relevance — don't cap those.
     firing_signals = [
         name for name, data in breakdown.items()
         if data.get("raw_signal", 0) > 0.3
     ]
     signal_count = len(firing_signals)
 
-    if signal_count < 2 and fraud_score >= FRAUD_SCORE_THRESHOLD:
+    if signal_count < 2 and fraud_score >= FRAUD_SCORE_THRESHOLD and not critical_penalty_applied:
         fraud_score = min(fraud_score, FRAUD_SCORE_THRESHOLD - 1)
         logger.info(
             f"Scorer: Corroboration cap applied — only 1 signal firing "
