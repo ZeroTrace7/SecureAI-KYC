@@ -114,6 +114,9 @@ def _extract_payslip_fields(ocr_text: str) -> dict:
     """
     Extract structured fields from French payslip OCR text.
 
+    Uses tiered regex: strict patterns first, then OCR-noise-tolerant
+    fallbacks with flexible whitespace and character substitution.
+
     Returns dict with extracted fields and raw values for validation.
     """
     text = ocr_text
@@ -134,28 +137,49 @@ def _extract_payslip_fields(ocr_text: str) -> dict:
     }
 
     # ── APE code ──
-    ape_match = re.search(
+    # Try strict pattern first, then broader fallback
+    ape_patterns = [
         r"(?:num[eé]ro\s*)?ape\s*[:.]?\s*([A-Za-z0-9]{3,6})",
-        text, re.IGNORECASE
-    )
-    if ape_match:
-        fields["ape_code"] = ape_match.group(1).strip()
+        r"(?:code\s*)?(?:ape|naf)\s*[:./\-]?\s*([A-Za-z0-9]{3,6})",
+        r"ape\s*([A-Za-z0-9]{4,5})",  # minimal context
+    ]
+    for pat in ape_patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            fields["ape_code"] = m.group(1).strip()
+            break
 
     # ── SIRET ──
-    siret_match = re.search(
+    # Strict: label + digits; Fallback: any standalone 14-digit sequence
+    siret_patterns = [
         r"siret\s*[:.]?\s*([\d\s]{14,20})",
-        text, re.IGNORECASE
-    )
-    if siret_match:
-        fields["siret"] = re.sub(r"\s+", "", siret_match.group(1).strip())
+        r"siret\s*[:/\-.]?\s*([\d\s]{14,22})",
+    ]
+    for pat in siret_patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            fields["siret"] = re.sub(r"\s+", "", m.group(1).strip())
+            break
+    # Fallback: naked 14-digit sequence near "siret" keyword
+    if not fields["siret"]:
+        m = re.search(r"(\d{14})", text)
+        if m:
+            # Only accept if near the word "siret" (within 100 chars)
+            pos = m.start()
+            context = text[max(0, pos - 100):pos + 100].lower()
+            if "siret" in context:
+                fields["siret"] = m.group(1)
 
-    # ── SS Number (Numéro SS) ──
-    ss_match = re.search(
-        r"(?:num[eé]ro\s*)?ss\s*[:.]?\s*([0-9A-Za-z][\d\s]{12,18})",
-        text, re.IGNORECASE
-    )
-    if ss_match:
-        fields["ss_number"] = re.sub(r"\s+", "", ss_match.group(1).strip())
+    # ── SS Number (Numéro SS / Sécurité Sociale) ──
+    ss_patterns = [
+        r"(?:num[eé]ro\s*)?(?:ss|s\.s\.|s[eé]curit[eé]\s*sociale)\s*[:.]?\s*([0-9A-Za-z][\d\s]{12,18})",
+        r"(?:n[°o]?\s*)?(?:ss|s\.?s\.?)\s*[:.]?\s*([12][\d\s]{12,18})",  # starts with 1 or 2
+    ]
+    for pat in ss_patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            fields["ss_number"] = re.sub(r"\s+", "", m.group(1).strip())
+            break
 
     # ── Postal Code (CP et Ville) ──
     cp_match = re.search(
@@ -166,52 +190,79 @@ def _extract_payslip_fields(ocr_text: str) -> dict:
         fields["postal_code"] = cp_match.group(1)
 
     # ── SALAIRE BRUT ──
-    # € is optional — OCR may drop it; use end-of-line or € as boundary
-    brut_match = re.search(
+    # Tiered: strict → flexible whitespace → broad fallback
+    brut_patterns = [
         r"salaire\s*brut\s*[^\d]*([\d\s,.]+?)(?:\s*€|\s*$)",
-        text, re.IGNORECASE | re.MULTILINE
-    )
-    if brut_match:
-        fields["salaire_brut_raw"] = brut_match.group(1).strip()
+        r"sal(?:aire)?\s*brut\s*[:.]?\s*([\d][\d\s,.]{2,12})(?:\s*€|\s|$)",
+        r"brut\s*[:=]?\s*([\d][\d\s,.]{2,12})(?:\s*€|\s|$)",
+    ]
+    for pat in brut_patterns:
+        m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
+        if m:
+            val = m.group(1).strip()
+            # Sanity: must have at least 1 digit
+            if re.search(r"\d", val):
+                fields["salaire_brut_raw"] = val
+                break
 
     # ── Salaire de base (heures, taux, montant) ──
-    # Capture 3 numeric groups. Accept letters in values (for char-class check).
-    base_match = re.search(
-        r"salaire\s*de\s*base\s+"
-        r"([\d\s,.A-Za-z]+?)\s+"              # heures
-        r"([\d\s,.A-Za-z]+?)\s*€?\s+"         # taux horaire
-        r"([\d\s,.A-Za-z]+?)(?:\s*€|\s*$)",   # montant
-        text, re.IGNORECASE | re.MULTILINE
-    )
-    if base_match:
-        fields["salaire_base_heures"] = base_match.group(1).strip()
-        fields["salaire_base_taux"] = base_match.group(2).strip()
-        fields["salaire_base_montant"] = base_match.group(3).strip()
+    base_patterns = [
+        (r"salaire\s*de\s*base\s+"
+         r"([\d\s,.A-Za-z]+?)\s+"
+         r"([\d\s,.A-Za-z]+?)\s*€?\s+"
+         r"([\d\s,.A-Za-z]+?)(?:\s*€|\s*$)"),
+        (r"sal(?:aire)?\s*(?:de\s*)?base\s*"
+         r"([\d][\d\s,.]{0,8})\s+"
+         r"([\d][\d\s,.]{0,8})\s*€?\s+"
+         r"([\d][\d\s,.]{0,10})(?:\s*€|\s|$)"),
+    ]
+    for pat in base_patterns:
+        m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
+        if m:
+            fields["salaire_base_heures"] = m.group(1).strip()
+            fields["salaire_base_taux"] = m.group(2).strip()
+            fields["salaire_base_montant"] = m.group(3).strip()
+            break
 
     # ── Net à payer ──
-    # Handle "à" and "a", € optional, allow letters in value for char-class check
-    net_match = re.search(
-        r"net\s*[àa]\s*payer\s*[^\dA-Za-z]*([\dA-Za-z][\d\s,.A-Za-z]*?)(?:\s*€|\s*$)",
-        text, re.IGNORECASE | re.MULTILINE
-    )
-    if net_match:
-        fields["net_a_payer_raw"] = net_match.group(1).strip()
+    net_patterns = [
+        r"net\s*[àaÀ]\s*payer\s*[^\dA-Za-z]*([\dA-Za-z][\d\s,.A-Za-z]*?)(?:\s*€|\s*$)",
+        r"net\s*[àaÀ]?\s*pay[eé]r?\s*[:=]?\s*([\d][\d\s,.]{2,12})(?:\s*€|\s|$)",
+        r"net\s*(?:[àaÀ]\s*)?pay(?:er)?\s*[:./]?\s*([\d][\d\s,.]{2,12})",
+    ]
+    for pat in net_patterns:
+        m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
+        if m:
+            val = m.group(1).strip()
+            if re.search(r"\d", val):
+                fields["net_a_payer_raw"] = val
+                break
 
     # ── Net imposable ──
-    netimp_match = re.search(
+    netimp_patterns = [
         r"net\s*imposable\s*[^\dA-Za-z]*([\dA-Za-z][\d\s,.A-Za-z]*?)(?:\s*€|\s*$)",
-        text, re.IGNORECASE | re.MULTILINE
-    )
-    if netimp_match:
-        fields["net_imposable_raw"] = netimp_match.group(1).strip()
+        r"net\s*impos(?:able)?\s*[:=]?\s*([\d][\d\s,.]{2,12})(?:\s*€|\s|$)",
+    ]
+    for pat in netimp_patterns:
+        m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
+        if m:
+            val = m.group(1).strip()
+            if re.search(r"\d", val):
+                fields["net_imposable_raw"] = val
+                break
 
     # ── TOTAL des cotisations ──
-    total_match = re.search(
+    total_patterns = [
         r"total\s*(?:des\s*)?cotisations\s*[^\d]*([\d\s,.]+?)(?:\s*€|\s*$)",
-        text, re.IGNORECASE | re.MULTILINE
-    )
-    if total_match:
-        fields["total_cotisations_raw"] = total_match.group(1).strip()
+        r"total\s*(?:des\s*)?cot(?:isations)?\s*[:=]?\s*([\d][\d\s,.]{2,12})",
+    ]
+    for pat in total_patterns:
+        m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
+        if m:
+            val = m.group(1).strip()
+            if re.search(r"\d", val):
+                fields["total_cotisations_raw"] = val
+                break
 
     # ── Cotisation rows ──
     # Pattern: label  base_amount €?  taux%  montant €?
@@ -577,23 +628,42 @@ def analyze_structured_document(ocr_text: str, doc_type: str = "other") -> dict:
     total_anomalies = len(format_violations) + len(char_anomalies) + len(arith_errors)
     result["anomaly_count"] = total_anomalies
 
-    # Weighted scoring:
-    #   - Character anomaly (letter in currency): +0.25 each (strongest)
-    #   - Arithmetic error: +0.20 each
-    #   - Format violation: +0.15 each
+    # Weighted scoring (increased weights — each finding is HIGH confidence):
+    #   - Character anomaly (letter in currency): +0.30 each (definitive tampering)
+    #   - Arithmetic error: +0.25 each (strong evidence)
+    #   - Format violation: +0.30 each (definitive — e.g. invalid APE checksum)
     score = 0.0
-    score += len(char_anomalies) * 0.25
-    score += len(arith_errors) * 0.20
-    score += len(format_violations) * 0.15
+    score += len(char_anomalies) * 0.30
+    score += len(arith_errors) * 0.25
+    score += len(format_violations) * 0.30
+
+    # ── Field coverage penalty ──
+    # If the document is classified as a payslip but key financial fields
+    # cannot be extracted, that's suspicious — legitimate payslips always
+    # have clearly printed amounts. OCR failure on key fields suggests
+    # obfuscation, unusual formatting, or non-standard layout.
+    key_fields = ["salaire_brut_raw", "net_a_payer_raw"]
+    extracted_count = sum(1 for f in key_fields if fields.get(f))
+    if extracted_count == 0:
+        score += 0.10
+        result["details"].append(
+            "Field coverage warning: Could not extract salaire_brut or net_a_payer "
+            "from OCR text — key financial fields are missing or unreadable."
+        )
+        logger.warning(
+            "StructuredDoc Agent: FIELD COVERAGE — 0/2 key financial fields extracted"
+        )
+
     score = min(1.0, score)
 
     result["structured_validation_score"] = round(score, 3)
 
     # Build human-readable summary
     all_details = format_violations + char_anomalies + arith_errors
-    result["details"] = all_details
+    # Prepend any existing details (field coverage warnings)
+    result["details"] = result["details"] + all_details
 
-    if total_anomalies == 0:
+    if total_anomalies == 0 and extracted_count > 0:
         result["details"].append(
             "Structured validation passed — all format checks, character classes, "
             "and arithmetic consistency verified."
@@ -604,7 +674,8 @@ def analyze_structured_document(ocr_text: str, doc_type: str = "other") -> dict:
         f"anomalies={total_anomalies} "
         f"(format={len(format_violations)}, "
         f"char={len(char_anomalies)}, "
-        f"arith={len(arith_errors)})"
+        f"arith={len(arith_errors)}) "
+        f"fields_extracted={extracted_count}/{len(key_fields)}"
     )
 
     return result

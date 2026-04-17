@@ -397,8 +397,8 @@ def compute_fraud_score(signals: dict) -> dict:
     if profile.get("expects_structured_validation"):
         sv_data = breakdown.get("structured_validation", {})
         sv_raw = sv_data.get("raw_signal", 0)
-        if sv_raw > 0.3:
-            # Direct penalty: 20 points for moderate, up to 30 for severe
+        if sv_raw > 0.25:
+            # Direct penalty: 15 points for moderate, up to 30 for severe
             sv_penalty = min(30.0, sv_raw * 40.0)
             fraud_score += sv_penalty
             critical_penalty_applied = True

@@ -284,6 +284,113 @@ def _analyze_spatial_layout(ocr_details: list[dict]) -> dict:
     }
 
 
+def _analyze_width_consistency(ocr_details: list[dict]) -> dict:
+    """
+    Detect font mixing by analyzing character width-to-height ratios.
+
+    Monospace fonts (Courier, Consolas) have uniform char widths.
+    Proportional fonts (Arial, Calibri) have variable widths.
+    Mixing both in a document body is a hallmark of font substitution forgery.
+
+    Also detects: same-size font substitution where height is identical
+    but character aspect ratios differ (e.g., Calibri vs CourierNew at 12pt).
+    """
+    if not ocr_details or len(ocr_details) < 5:
+        return {
+            "width_consistent": True,
+            "aspect_ratio_cv": 0.0,
+            "mono_ratio": 0.0,
+            "cluster_count": 1,
+            "detail": "Insufficient text regions for width analysis",
+        }
+
+    aspect_ratios = []
+    char_widths = []  # width per character
+
+    for item in ocr_details:
+        bbox = item.get("bbox")
+        text = item.get("text", "")
+        if not bbox or len(bbox) != 4 or len(text.strip()) < 3:
+            continue
+
+        try:
+            xs = [pt[0] for pt in bbox]
+            ys = [pt[1] for pt in bbox]
+            width = max(xs) - min(xs)
+            height = max(ys) - min(ys)
+
+            if height < 5 or width < 5:  # filter tiny artifacts
+                continue
+
+            # Aspect ratio: width / height per region
+            ar = width / height
+            aspect_ratios.append(ar)
+
+            # Character width: total width / number of characters
+            n_chars = len(text.strip())
+            if n_chars > 0:
+                cw = width / n_chars
+                char_widths.append(cw)
+
+        except (IndexError, TypeError, ZeroDivisionError):
+            continue
+
+    if len(aspect_ratios) < 5:
+        return {
+            "width_consistent": True,
+            "aspect_ratio_cv": 0.0,
+            "mono_ratio": 0.0,
+            "cluster_count": 1,
+            "detail": "Too few valid regions for width analysis",
+        }
+
+    ar_arr = np.array(aspect_ratios, dtype=np.float64)
+    ar_mean = float(np.mean(ar_arr))
+    ar_std = float(np.std(ar_arr))
+    ar_cv = ar_std / ar_mean if ar_mean > 0 else 0
+
+    # ── Detect monospace vs proportional mixing ──
+    # Monospace: low char_width variance within a region
+    # Look at the coefficient of variation of per-character widths
+    cw_arr = np.array(char_widths, dtype=np.float64) if char_widths else np.array([0.0])
+    cw_mean = float(np.mean(cw_arr))
+    cw_std = float(np.std(cw_arr))
+    cw_cv = cw_std / cw_mean if cw_mean > 0 else 0
+
+    # ── Cluster detection: group aspect ratios into bins ──
+    # Multiple distinct clusters = multiple fonts
+    if len(ar_arr) >= 10:
+        # Simple histogram-based clustering
+        hist, bin_edges = np.histogram(ar_arr, bins=min(15, len(ar_arr) // 3))
+        # Count non-zero bins above noise floor (> 5% of max)
+        noise_floor = max(hist) * 0.05
+        cluster_count = int(np.sum(hist > noise_floor))
+    else:
+        cluster_count = 1
+
+    # ── Decision ──
+    # High aspect_ratio CV (> 0.45) or high char_width CV (> 0.40)
+    # or multiple font clusters (> 4) indicates font mixing
+    width_consistent = (
+        ar_cv < 0.45
+        and cw_cv < 0.40
+        and cluster_count <= 4
+    )
+
+    return {
+        "width_consistent": width_consistent,
+        "aspect_ratio_cv": round(ar_cv, 3),
+        "char_width_cv": round(cw_cv, 3),
+        "char_width_mean": round(cw_mean, 1),
+        "mono_ratio": round(cw_cv, 3),
+        "cluster_count": cluster_count,
+        "detail": (
+            f"Character widths are {'consistent' if width_consistent else 'INCONSISTENT'} "
+            f"(aspect_CV={ar_cv:.3f}, charWidth_CV={cw_cv:.3f}, clusters={cluster_count})"
+        ),
+    }
+
+
 def _analyze_dct_consistency(image_path: str) -> dict:
     """
     Detect double JPEG compression — a hallmark of edited documents.
@@ -506,6 +613,7 @@ def analyze_text_integrity(image_path: str, ocr_details: list[dict] = None) -> d
     font_result = _analyze_font_consistency(ocr_details)
     conf_result = _analyze_confidence_map(ocr_details)
     spatial_result = _analyze_spatial_layout(ocr_details)
+    width_result = _analyze_width_consistency(ocr_details)
 
     # ── Frequency-domain and feature-based analyses ──
     dct_result = _analyze_dct_consistency(image_path)
@@ -514,6 +622,7 @@ def analyze_text_integrity(image_path: str, ocr_details: list[dict] = None) -> d
     result["font_analysis"] = font_result
     result["confidence_analysis"] = conf_result
     result["spatial_analysis"] = spatial_result
+    result["width_analysis"] = width_result
     result["dct_analysis"] = dct_result
     result["copy_move_analysis"] = copy_move_result
 
@@ -556,6 +665,18 @@ def analyze_text_integrity(image_path: str, ocr_details: list[dict] = None) -> d
         if not spatial_result.get("layout_consistent", True):
             result["integrity_details"].append(spatial_result["detail"])
 
+    # Width consistency component: detects font substitution via character widths
+    # This catches same-size font mixing that height-only analysis misses
+    ar_cv = width_result.get("aspect_ratio_cv", 0)
+    cw_cv = width_result.get("char_width_cv", 0)
+    clusters = width_result.get("cluster_count", 1)
+    # Graduated scoring: higher CV and more clusters = more suspicious
+    width_score = min(0.4, (ar_cv * 0.3 + cw_cv * 0.4 + max(0, clusters - 2) * 0.05))
+    if width_score > 0.02:
+        score_components.append(width_score)
+        if not width_result.get("width_consistent", True):
+            result["integrity_details"].append(width_result["detail"])
+
     # DCT double-compression (hard signal)
     if not dct_result.get("dct_consistent", True):
         peak_count = dct_result.get("peak_count", 0)
@@ -590,6 +711,7 @@ def analyze_text_integrity(image_path: str, ocr_details: list[dict] = None) -> d
         f"font_ok={font_result.get('font_consistent')} "
         f"conf_ok={conf_result.get('confidence_consistent')} "
         f"layout_ok={spatial_result.get('layout_consistent')} "
+        f"width_ok={width_result.get('width_consistent')} "
         f"dct_ok={dct_result.get('dct_consistent')} "
         f"copy_move={copy_move_result.get('copy_move_detected')}"
     )
