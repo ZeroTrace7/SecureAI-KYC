@@ -1,6 +1,7 @@
 'use client';
 
 import DocumentUploader from '@/components/dashboard/DocumentUploader';
+import ReportGenerator from '@/components/dashboard/ReportGenerator';
 import {
   Activity, Shield, ScanEye, Cpu, Fingerprint, Eye,
   PenTool, Type, FileText, Database, GitCompareArrows,
@@ -92,6 +93,9 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+
+          {/* Download Report — only visible when results ready */}
+          <ReportGenerator />
 
           {/* Today's Activity */}
           <div className="p-5 rounded-2xl border border-slate-800/80" style={{ backdropFilter: 'blur(12px)', background: 'rgba(15, 23, 42, 0.5)' }}>
