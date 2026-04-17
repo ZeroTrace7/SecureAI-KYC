@@ -438,8 +438,13 @@ async def verify_document_endpoint(
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
 
     finally:
-        # Clean up uploaded files (optional: keep for audit)
-        pass
+        # Clean up uploaded and generated files to prevent disk bloat
+        try:
+            for f in os.listdir(UPLOAD_DIR):
+                if f.startswith(file_id):
+                    os.remove(os.path.join(UPLOAD_DIR, f))
+        except Exception as e:
+            logger.warning(f"Failed to clean up files for {file_id}: {e}")
 
 
 # ═══════════════════════════════════════════════════════════
