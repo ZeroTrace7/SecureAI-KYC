@@ -438,6 +438,21 @@ def compute_fraud_score(signals: dict) -> dict:
             )
             fraud_score = suspicious_threshold
 
+        # ── Tiered escalation for financial documents ──
+        # For salary_slips/utility_bills/invoices: text_integrity > 0.28 is
+        # definitive font forgery (genuine payslips score 0.10-0.18, forged
+        # score 0.29-0.39 — gap of 0.10+ points). Escalate to FORGED.
+        if profile.get("expects_text_integrity"):
+            ti_data = breakdown.get("text_integrity", {})
+            ti_raw_score = ti_data.get("raw_signal", 0)
+            if ti_raw_score > 0.28 and fraud_score < FRAUD_SCORE_THRESHOLD:
+                logger.warning(
+                    f"Scorer: Text integrity FORGED escalation on '{doc_type}' "
+                    f"(ti_raw={ti_raw_score:.3f} > 0.28) — font substitution confirmed. "
+                    f"Bumping {fraud_score:.1f} → {FRAUD_SCORE_THRESHOLD}"
+                )
+                fraud_score = FRAUD_SCORE_THRESHOLD
+
     # ── Corroboration check ──
     # A single noisy agent should NOT push a document to FORGED by itself.
     # Require at least 2 independent signals firing > 0.3 for FORGED verdict.
