@@ -396,10 +396,13 @@ def compute_fraud_score(signals: dict) -> dict:
     # ── Safety net for ALL documents ──
     # If a document is about to be marked GENUINE, but has suspicious anomalies,
     # we escalate it to prevent obvious forgeries from slipping through the weighted average.
+    # Uses contribution-weighted check so signals that the profile de-weighted
+    # (e.g. deepfake at 0.3x for Aadhaar) don't trigger false escalations.
     if decision == "GENUINE":
         suspicious_signals = [
             name for name, data in breakdown.items()
-            if data.get("raw_signal", 0) > 0.25
+            if data.get("raw_signal", 0) > 0.3
+            and data.get("contribution", 0) > 2.0  # must contribute >2% to score
         ]
         if len(suspicious_signals) >= 2:
             decision = "SUSPICIOUS"
@@ -411,9 +414,8 @@ def compute_fraud_score(signals: dict) -> dict:
             )
         elif len(suspicious_signals) == 1 and doc_type == "other":
             # Only escalate "other" (unrecognized) document types on a single signal.
-            # Salary slips, utility bills, etc. have known profiles — a single
-            # moderate signal (e.g. text_integrity at 0.30 on a variable-layout
-            # payslip) is expected noise, NOT evidence of forgery.
+            # Known document types have calibrated profiles — noisy signals
+            # are already de-weighted appropriately.
             decision = "MANUAL_REVIEW"
             fraud_score = max(fraud_score, (FRAUD_SCORE_THRESHOLD * 0.45))
             logger.warning(
