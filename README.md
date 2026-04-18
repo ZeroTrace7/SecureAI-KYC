@@ -2,86 +2,140 @@
 
 **SecureAI-KYC** is a comprehensive, multi-agent forensic verification platform built to detect sophisticated document fraud. Developed for the **Document Forgery Detection Blue Team Challenge** at the National Hackathon, 2026.
 
-Instead of relying on a single "black-box" machine learning model, SecureAI-KYC uses a deterministic, **stage-gated 8-signal pipeline** that cross-validates visual, spatial, textual, and immutable data, outputting an explainable fraud score and PDF report.
+Instead of relying on a single "black-box" machine learning model, SecureAI-KYC uses a deterministic, **stage-gated pipeline** that cross-validates visual, spatial, textual, and immutable data across **14 independent modules**, outputting an explainable fraud score and a downloadable PDF compliance report.
 
 ---
 
 ## 💻 Complete Technology Stack & Deep Dive
 
 ### Frontend (UI & Real-time Visualization)
-*   **Framework:** Next.js 16 & React 19 (App Router) — Chosen for Server-Side Rendering (SSR) capabilities and optimal layout rendering, ensuring the dashboard loads instantly even on slow networks.
-*   **Styling:** Tailwind CSS v4 — Utility-first CSS allows for rapid prototyping of the complex "ai-spark" light-mode UI without heavy global stylesheets.
-*   **Animations:** Framer Motion — Critical for user experience. We use complex spring physics and staggered `AnimatePresence` effects to visualize the server's pipeline progression in real-time on the client side.
-*   **Reporting:** jsPDF — Generates compliance-ready XAI PDF reports entirely on the client, saving backend bandwidth and ensuring instant downloads.
+| Technology | Version | Purpose |
+|---|---|---|
+| **Next.js** | 16 | React meta-framework with App Router for SSR and instant dashboard loading |
+| **React** | 19 | Component-based UI with state management via Context API |
+| **Tailwind CSS** | v4 | Utility-first CSS for rapid, consistent UI theming (light-mode SaaS design) |
+| **Framer Motion** | 12.x | Spring-physics animations for real-time pipeline progression and micro-interactions |
+| **jsPDF** | 4.x | Client-side PDF generation for XAI compliance reports (zero backend load) |
+| **Lucide React** | 1.7 | Icon system for the dashboard UI |
+| **TypeScript** | 5.x | Type-safe frontend with strict mode enabled |
 
 ### Backend (Core Logic & API)
-*   **Framework:** FastAPI & Python 3.11 — Chosen for its unmatched asynchronous performance and automatic OpenAPI schema generation. It handles heavy image payloads via `UploadFile` with minimal memory overhead.
-*   **Concurrency:** Built-in `ThreadPoolExecutor` — Instead of running AI models sequentially (which would take ~40 seconds), we fire all 8 independent Python ML agents concurrently, resolving the entire pipeline in under 5 seconds.
-*   **Database:** SQLite & SQLAlchemy — A fast, local database specifically configured to manage the perceptual hash ledger, ensuring quick O(1) lookups for Blockchain validation.
+| Technology | Version | Purpose |
+|---|---|---|
+| **FastAPI** | 0.135 | High-performance async Python API with automatic OpenAPI docs |
+| **Uvicorn** | 0.42 | ASGI server running the FastAPI application |
+| **Python** | 3.11+ | Core language for AI/ML pipeline logic |
+| **ThreadPoolExecutor** | stdlib | Fires all 8 forensic agents concurrently (cuts latency from ~40s to <5s) |
+| **SQLite + SQLAlchemy** | 2.0 | Zero-dependency database for the Blockchain Hash Ledger and Audit Trail |
+| **PyMuPDF (fitz)** | 1.27 | PDF-to-image conversion for uploaded PDF documents |
+| **Loguru** | 0.7 | Structured, color-coded logging for pipeline debugging |
 
 ### AI, Machine Learning & Computer Vision
-*   **Frameworks:** PyTorch & Hugging Face Transformers — The backbone of our Deepfake and ML Forgery engines. We load optimized standard `.safetensors` models (MobileNetV2 variants) directly into memory at server startup to eliminate cold-start latency.
-*   **Computer Vision (CV):** OpenCV (`cv2`) & Scikit-image — Used for low-level pixel manipulation. We map Error Level Analysis (ELA) using structural variance and rely on Hough circle transforms in OpenCV to isolate geometric seals.
-*   **OCR Engine:** EasyOCR — A PyTorch-based OCR tool. We specifically locked its language models to English-only to drop extraneous neural weights, cutting inference time by 40%.
-*   **NLP Validation:** FuzzyWuzzy & Levenshtein — Used in the cross-validation stage. Instead of requiring exact string matches (which fail due to OCR noise), we look for semantic distances > 80% to confirm identity verification.
-*   **Explainable AI (XAI):** Google Gemini API (`google-genai`) — Uses a zero-shot prompt injection technique. We pass the raw mathematical anomaly scores and standard deviation variances into the LLM, forcing it to return a plain-English, RBI-compliant justification.
-*   **Cryptographic Ledger:** ImageHash — Generates perceptual hashes (pHash) rather than standard SHA-256 hashes. This ensures that if a fraudster slightly crops or compresses an image to bypass a standard checksum, the visual similarity still triggers the ledger anti-fraud check.
+| Technology | Version | Purpose |
+|---|---|---|
+| **PyTorch** | 2.11 | Deep learning framework powering Deepfake and OCR models |
+| **Hugging Face Transformers** | 5.4 | Model hub for loading pre-trained `.safetensors` checkpoints |
+| **EasyOCR** | 1.7 | PyTorch-based OCR engine (locked to English-only for 40% speed boost) |
+| **PyTesseract** | 0.3 | Fallback OCR engine if EasyOCR is unavailable |
+| **OpenCV** | 4.13 | Image processing: blur detection (Laplacian), ELA computation, face extraction (Haar cascades), HSV segmentation, Hough circles |
+| **Pillow (PIL)** | 12.x | Image I/O and perceptual hash computation |
+| **Scikit-image** | 0.26 | Structural similarity (SSIM) for ELA variance mapping |
+| **SciPy** | 1.17 | DCT (Discrete Cosine Transform) for double-JPEG compression detection |
+| **NumPy** | 2.4 | Matrix operations for pixel-level forensic analysis |
+| **FuzzyWuzzy + Levenshtein** | 0.18 | Fuzzy string matching for QR-OCR cross-validation (handles OCR noise) |
+| **PyZbar** | 0.1.9 | 1D/2D barcode and QR code decoding from document images |
+| **ImageHash** | 4.3+ | Perceptual hashing (pHash) for visual similarity resubmission detection |
+| **Google Gemini API** | 2.0 Flash | LLM-powered Explainable AI (XAI) for plain-English compliance reports |
 
 ---
 
-## 🛠️ Implementation Methodology (How We Did It)
+## 🏗️ Full System Pipeline (14 Modules, 7 Stages)
 
-Building an 8-signal AI pipeline that runs in real-time required strict architectural methodology:
+### STAGE 1–2 · INTAKE
+| Module | File | How It Works |
+|---|---|---|
+| **Quality Gate** | `pipeline/quality_gate.py` | Pure OpenCV — no AI. Runs 4 checks: `Laplacian variance` for blur, `min resolution` (300px), `mean brightness` range (40–245), and `std deviation` for contrast. If any check fails, the document is instantly rejected before wasting GPU resources. |
+| **Document Classifier** | `pipeline/classifier.py` | Rule-based regex engine. Scans OCR text for document-specific keywords (e.g., "UNIQUE IDENTIFICATION" → Aadhaar, "INCOME TAX" → PAN). Includes a `is_payslip_like()` fallback to catch misclassified salary slips using keywords like "basic pay", "gross", "deductions". |
 
-1.  **Stage-Gated Pipeline:** We split the backend into distinct stages: Quality Gate -> Concurrent Forensics -> Cross-Validation -> Scoring System. If an image fails the initial Quality Gate (e.g., too blurry), the pipeline preemptively halts, saving massive GPU/CPU resources.
-2.  **Concurrency Model:** AI inference is heavily CPU/GPU bound. We wrap our heavy functions (like ELA and Deepfake detection) inside FastAPI's async thread pools. This means while the OCR is scanning text, the PyTorch models are simultaneously scanning the image artifacts.
-3.  **Aggressive Downscaling:** Before any deep learning models touch the image, OpenCV clamps the maximum resolution to 800px. This exponentially reduces the pixel-matrix math required for neural networks without destroying the spatial artifacts needed to spot Photoshop masking.
-4.  **The Safety Net Engine:** Building a purely weighted scoring system is dangerous (e.g., an authentic document with bad glare might score as "suspicious"). We coded a strict algorithmic safety net—if a critical heuristic variable (like *broken arithmetic checksums on a payslip*) fails perfectly, it mathematically overrides the ML probability and flags the document. XAI handles the explanation of *why* the override triggered.
+### STAGE 3 · FORENSIC AGENTS (Run in Parallel)
+All 8 agents below are fired **concurrently** inside a `ThreadPoolExecutor(max_workers=8)`. While the OCR is scanning text, PyTorch is simultaneously running deepfake inference, ELA is computing pixel differences, and the blockchain is querying the hash ledger.
+
+| Agent | File | How It Works |
+|---|---|---|
+| **OCR Engine** | `agents/ocr_agent.py` | Uses a singleton `EasyOCR` reader pre-loaded at server startup (eliminates cold-start). Images are **downscaled to 800px max-side** via `cv2.resize` before OCR to exponentially reduce inference time. Extracts bounding boxes, text, and per-line confidence scores. Regex post-processing extracts structured fields (Name, DOB, UID, PAN number). |
+| **ELA Pixel Analysis** | `agents/ela_agent.py` | Saves the image at JPEG quality 95, then computes the absolute pixel-level difference between the original and re-saved version. Inconsistent compression regions (e.g., a Photoshopped name pasted over an original) light up as bright hotspots on the ELA heatmap. Uses `scikit-image` for structural variance and outputs a normalized 0–1 tampering score. |
+| **EXIF Metadata** | `agents/exif_agent.py` | Uses `exifread` to extract IPTC/EXIF headers. Flags: (1) Known editing software signatures (Photoshop, GIMP, Canva, DALL-E, Midjourney) via a curated blocklist, (2) Impossible timestamps (modified date before creation date), (3) Camera make/model metadata from synthetic generators. Outputs `clean`, `notable`, or `suspicious`. |
+| **Deepfake Detector** | `agents/deepfake_agent.py` | Extracts the face from the document using OpenCV **Haar cascade classifiers** (`haarcascade_frontalface_default`). The cropped face (minimum 80px) is fed through a HuggingFace `image-classification` pipeline using the `dima806/deepfake_vs_real_image_detection` model (~350 MB, pre-loaded at startup). Outputs a 0–1 probability of synthetic generation. |
+| **ML Forgery Engine** | `agents/ml_forgery_agent.py` | MobileNetV2-based classifier trained on forgery datasets. Provides a redundant visual signal alongside ELA. Currently disabled by feature flag (the model `kumaran-0188/image_forgery_detector` is TF/Keras-based, incompatible with the PyTorch pipeline). Re-enable when a PyTorch-native forgery model is available. |
+| **Signature & Seal** | `agents/signature_seal_agent.py` | Three-phase analysis: (1) **Seal Detection** — HSV color-space segmentation isolates red/blue circular stamps, then `HoughCircles` validates circularity. (2) **Signature Detection** — Adaptive thresholding detects high-frequency ink strokes. (3) **Edge Forensics** — Sobel gradient analysis measures edge sharpness. Digitally pasted elements have unnaturally sharp, pixel-perfect edges compared to real ink bleeding into paper. |
+| **Text Integrity** | `agents/text_integrity_agent.py` | Three-pronged analysis: (1) **Font Consistency** — Measures variance in OCR bounding-box character heights and spacing outliers. (2) **DCT Analysis** — Uses `scipy.fft.dctn` for frequency-domain peak detection to catch double-JPEG compression artifacts in text regions. (3) **Copy-Move Detection** — ORB (Oriented FAST and Rotated BRIEF) feature matching to detect duplicated document regions where text was copy-pasted. |
+| **Blockchain Ledger** | `pipeline/blockchain_ledger.py` | Dual-hash system: (1) **SHA-256** content hash for exact-match detection. (2) **Perceptual Hash (pHash)** via `imagehash` for visual similarity — catches fraudsters who slightly crop, compress, or resize a previously rejected document to bypass checksums. SQLite-backed immutable chain with genesis block, `prev_block_hash` linking, and full chain integrity validation on every query. |
+
+### STAGE 4–7 · VALIDATION & OUTPUT
+
+| Module | File | How It Works |
+|---|---|---|
+| **QR Cross-Validator** | `pipeline/cross_validator.py` | The **strongest signal** (weight: 0.25). Decodes the embedded QR payload using `pyzbar`, then runs `fuzz.token_sort_ratio()` (Levenshtein distance) against OCR-extracted fields (Name, DOB, UID). If a fraudster changes the printed name on an Aadhaar but leaves the original QR intact, the name similarity drops below 85% and the document is instantly flagged. Handles name-order variations (e.g., "Rajesh Kumar" vs "Kumar Rajesh"). |
+| **Structured Validator** | `agents/structured_doc_agent.py` | Semantic logic engine for financial documents. Checks: (1) **Character class validation** — detects letters hidden in money fields (e.g., `O` replacing `0`). (2) **Arithmetic checksums** — verifies that Gross Pay - Deductions = Net Pay. (3) **Format validation** — ensures APE/SIRET codes match expected regex patterns. Primary detector for NaviDoMass-style payslip forgeries. |
+| **Scoring Engine** | `pipeline/scorer.py` | Document-type-aware weighted average across all signals. Each document type (Aadhaar, PAN, Passport, Salary Slip, Utility Bill) has a unique **weight modifier profile** — e.g., Deepfake weight is 0.3x for Aadhaar (small compressed photos are noisy) but 1.0x for Passports (face swap is the primary attack). Includes a **corroboration check** requiring ≥2 independent signals to fire before marking FORGED. 4-tier decision engine: `GENUINE`, `MANUAL_REVIEW`, `SUSPICIOUS`, `FORGED`. |
+| **Explainability AI** | `pipeline/explainer.py` | Tries **Gemini 2.0 Flash** first with a zero-shot RBI-regulation-aware prompt that cites specific KYC Master Direction sections (16, 38c, 56). Falls back to a deterministic template engine if the API is unavailable. Both produce structured, hallucination-free compliance explanations. |
 
 ---
 
-## ⚙️ How It Works (The 8-Signal Pipeline)
+## 🔒 The Safety Net Architecture
 
-When a document is uploaded, it passes through our parallel execution engine:
+The weighted average alone is dangerous — a genuine document with bad lighting could score as "suspicious" if a single noisy agent fires. We implemented three safety mechanisms:
 
-1.  **Quality Gate:** OpenCV verifies blur, glare, and resolution constraints.
-2.  **Classification & OCR:** EasyOCR extracts bounding boxes and text.
-3.  **ELA Pixel Forensics:** Detects Photoshop/editing compression artifacts.
-4.  **EXIF Metadata:** Scans for impossible timestamps and known editing software footprints.
-5.  **Signature & Seal Analysis:** Uses HSV segmentation and Hough circles to detect digitally pasted elements.
-6.  **Deepfake Detection:** Analyzes the extracted face for GAN/Diffusion artifacts.
-7.  **Text & Structural Integrity:** Detects character-class manipulation (e.g., hidden letters in money fields) and broken arithmetic checksums (especially on Payslips).
-8.  **QR ↔ OCR Cross-Validation:** The most heavily weighted signal. It cryptographically decrypts the Aadhaar/PAN QR code and string-matches it against the printed text.
-
-**Final Verdict:** The system computes a weighted average. However, we use a **Safety Net Architecture**—if any single critical signal scores incredibly high for fraud, the document is mathematically overridden and forced into `MANUAL_REVIEW` by a human agent.
+1. **Critical Penalty Override:** If a document type *expects* a feature (e.g., Aadhaar expects a seal) and that feature's agent detects severe anomalies (raw_signal > 0.4), a **direct penalty (+15 to +25 points)** is added to the fraud score, bypassing the weighted-average dilution.
+2. **Corroboration Requirement:** A single noisy agent cannot push a document to `FORGED` by itself. The scorer requires **≥2 independent signals** firing above 0.3 before issuing a `FORGED` verdict.
+3. **Tiered Escalation for Financial Documents:** For salary slips, if the Text Integrity raw score exceeds 0.28 (a calibrated gap — genuine payslips score 0.10–0.18, forged score 0.29–0.39), the document is mathematically escalated to `FORGED` regardless of other clean signals.
 
 ---
 
-## 🎤 Pitch Guide for Judges 
-*How to present this project to technically advanced judges.*
+## 🛠️ Implementation Methodology (How We Built It)
+
+1. **Model Pre-loading at Startup:** EasyOCR (~40 MB), Deepfake ViT (~350 MB), and ML Forgery models are pre-loaded into memory on `@app.on_event("startup")`. This eliminates the 30–60 second cold-start delay that would kill a live demo.
+2. **Single-Pass OCR:** OCR runs once, and the extracted bounding boxes + raw text are shared with both the Text Integrity Agent and the Structured Validator. This avoids redundant neural network inference.
+3. **Aggressive Downscaling:** Before any deep learning sweep, `cv2.resize` clamps the image to 800px max-side using `INTER_AREA` interpolation. OCR time scales with pixel count — this cut processing from ~15s to ~2s per scan.
+4. **Feature Flag System:** Every agent can be toggled on/off via environment variables (`ENABLE_DEEPFAKE`, `ENABLE_ML_FORGERY`, etc.). This allows graceful degradation on machines without GPU support.
+5. **Automatic File Cleanup:** The `finally` block in the pipeline deletes all uploaded and generated files (ELA heatmaps, preprocessed images) after each request to prevent disk bloat.
+
+---
+
+## ⚡ Performance Benchmarks
+
+| Metric | Value |
+|---|---|
+| End-to-end pipeline latency | **< 5 seconds** (CPU-only, no GPU required) |
+| Pre-optimization latency | ~80 seconds |
+| OCR speed after downscaling | ~2s (down from ~15s at full resolution) |
+| EasyOCR weight reduction | 40% (English-only lock) |
+| Concurrent agent execution | 8 threads via `ThreadPoolExecutor` |
+| Model pre-load time (one-time) | ~45 seconds at server startup |
+
+---
+
+## 🎤 Pitch Guide for Judges
 
 ### 1. The Hook (The Problem)
 > *"Most KYC systems rely on simple OCR or a single image classification model. The problem? Single models are easily bypassed by localized edits, and standard OCR cannot tell if text was digitally pasted. Our solution is **SecureAI-KYC**, an architectural approach to fraud detection that acts as a multi-agent forensic laboratory."*
 
 ### 2. Explain the Tech Stack (The "Why")
-> *"For the frontend, we used **Next.js and Framer Motion** to create a highly responsive, modern SaaS dashboard that visualizes the pipeline in real-time. But the magic is in the backend.* 
->
-> *We built a high-performance **FastAPI** server that runs 8 independent forensic agents concurrently using a ThreadPoolExecutor. We use **OpenCV and Scikit-image** for Error Level Analysis and visual segmentation. For text extraction, we optimized **EasyOCR**, and for deepfake detection, we implemented **PyTorch/Transformers**. Finally, we use the **Gemini API** as an Explainability Agent to convert the complex mathematical scores into a plain-English compliance report."*
+> *"For the frontend, we used **Next.js 16 and Framer Motion** to create a real-time SaaS dashboard that visualizes the pipeline as it runs. The backend is a **FastAPI** server (Python 3.11) that runs 8 independent forensic agents concurrently using ThreadPoolExecutor. We use **OpenCV and Scikit-image** for Error Level Analysis, **EasyOCR (PyTorch)** for text extraction, **Hugging Face Transformers** for deepfake detection, **PyZbar** for QR decryption, **FuzzyWuzzy** for cross-validation, **ImageHash** for blockchain ledger matching, and the **Gemini 2.0 Flash API** for Explainable AI compliance reports."*
 
 ### 3. The Demo Flow (Show, Don't Tell)
-**Demo 1: The Identity Card Fake (QR-OCR Cross-Validation)**
-1.  Upload a forged Aadhaar card where the printed name was altered using Photoshop, but the original QR code remains.
-2.  **Point out to judges:** *"Visually, this looks perfect. A standard ML model might pass it. But look at our pipeline—our QR decoder extracted the hidden payload, ran a Fuzzy text search against the printed OCR, detected the mismatch, and instantly rejected it. Deterministic security beats probabilistic guessing."*
+**Demo 1: Identity Card Forgery (QR-OCR Kill Feature)**
+1. Upload a forged Aadhaar where the printed name was edited in Photoshop, but the QR code is untouched.
+2. *"Our QR decoder extracted the hidden payload, ran a Fuzzy text match against the OCR, detected the mismatch, and instantly rejected it. Deterministic security beats probabilistic guessing."*
 
-**Demo 2: The Salary Slip Fake (Structural Semantic Validation)**
-1.  Upload an altered salary slip (e.g., where a `0` was changed to an `O` or the Gross Pay arithmetic doesn't match the deductions).
-2.  **Point out to judges:** *"This is a NaviDoMass-style forgery. The pixel manipulation is too subtle for standard filters. But our **Structured Document Validator** agent doesn't just read pixels; it reads semantics. It caught the invalid character class and the broken arithmetic checksum."*
+**Demo 2: Salary Slip Forgery (Semantic Validation)**
+1. Upload a fake payslip where a `0` was changed to `O` or Gross Pay arithmetic doesn't match.
+2. *"Standard image filters can't catch this. But our Structured Validator reads the logic — it caught the character-class violation and the broken arithmetic checksum."*
 
 ### 4. Anticipated Q&A
-*   **Q: "Is your system too slow with 8 ML models?"**
-    *   **A:** *"No. We heavily optimized it. We downscale images to 800px max-width before deep learning sweeps, we hardcoded EasyOCR to English to drop 40% of the neural weights, and we run the agents concurrently. Processing takes under 5 seconds."*
-*   **Q: "How do you handle 'black-box' ML trust issues for compliance?"**
-    *   **A:** *"We implemented a Safety Net Architecture and an XAI (Explainable AI) stage. The pipeline generates a localized PDF report (using jsPDF) that gives a specific reason for rejection based on the exact agent that flagged it, tying it back to RBI KYC master directions."*
+* **"Is it too slow with 8 models?"** — *"No. We downscale to 800px, lock OCR to English, pre-load models at startup, and run agents concurrently. Processing takes under 5 seconds."*
+* **"How do you handle black-box trust?"** — *"Our Safety Net Architecture combines corroboration checks with a Gemini-powered XAI stage that generates plain-English compliance reports citing specific RBI KYC Master Directions."*
+* **"What if a signal is irrelevant?"** — *"Each document type has a unique weight modifier profile. Deepfake is weighted 0.0x for payslips (no face) and 1.0x for passports. Missing seals don't penalize PAN cards because PAN cards don't have seals."*
 
 ---
 
