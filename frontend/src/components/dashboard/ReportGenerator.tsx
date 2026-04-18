@@ -432,18 +432,17 @@ export default function ReportGenerator() {
       disabled={generating}
       className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
-        border: '1px solid rgba(99, 102, 241, 0.3)',
-        color: '#a5b4fc',
-        backdropFilter: 'blur(12px)',
+        background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(239, 68, 68, 0.08) 100%)',
+        border: '1px solid rgba(249, 115, 22, 0.3)',
+        color: '#c2410c',
       }}
       onMouseEnter={(e) => {
-        (e.target as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%)';
-        (e.target as HTMLButtonElement).style.borderColor = 'rgba(99, 102, 241, 0.5)';
+        (e.target as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%)';
+        (e.target as HTMLButtonElement).style.borderColor = 'rgba(249, 115, 22, 0.5)';
       }}
       onMouseLeave={(e) => {
-        (e.target as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)';
-        (e.target as HTMLButtonElement).style.borderColor = 'rgba(99, 102, 241, 0.3)';
+        (e.target as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(239, 68, 68, 0.08) 100%)';
+        (e.target as HTMLButtonElement).style.borderColor = 'rgba(249, 115, 22, 0.3)';
       }}
     >
       {generating ? (

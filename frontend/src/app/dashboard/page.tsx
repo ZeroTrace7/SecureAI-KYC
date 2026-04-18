@@ -45,8 +45,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">Verify Identity Document</h1>
-        <p className="text-sm text-slate-400">Upload a PAN Card, Aadhaar, Passport or Utility Bill for immediate multi-agent forensic analysis.</p>
+        <h1 className="text-2xl font-bold text-stone-900 mb-1 tracking-tight">Verify Identity Document</h1>
+        <p className="text-sm text-stone-500">Upload a PAN Card, Aadhaar, Passport or Utility Bill for immediate multi-agent forensic analysis.</p>
       </div>
 
       {/* Main Workspace */}
@@ -59,12 +59,12 @@ export default function DashboardPage() {
         {/* Right: Pipeline Status (1/4 width on XL) */}
         <div className="space-y-5">
           {/* System Pipeline — All 14 agents grouped by stage */}
-          <div className="p-5 rounded-2xl border border-slate-800/80" style={{ backdropFilter: 'blur(12px)', background: 'rgba(15, 23, 42, 0.5)' }}>
-            <h2 className="text-xs font-bold text-slate-500 mb-4 uppercase tracking-widest">System Pipeline</h2>
+          <div className="p-5 rounded-2xl border border-stone-200 bg-white shadow-sm">
+            <h2 className="text-xs font-bold text-stone-400 mb-4 uppercase tracking-widest">System Pipeline</h2>
             <div className="space-y-4">
               {PIPELINE_GROUPS.map((group, gi) => (
                 <div key={gi}>
-                  <p className="text-[10px] font-bold text-indigo-400/60 uppercase tracking-widest mb-1.5 pl-1">
+                  <p className="text-[10px] font-bold text-orange-500/60 uppercase tracking-widest mb-1.5 pl-1">
                     {group.phase}
                   </p>
                   <div className="space-y-0.5">
@@ -73,16 +73,16 @@ export default function DashboardPage() {
                       return (
                         <div
                           key={ai}
-                          className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-slate-800/40 transition-colors group/row"
+                          className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-stone-50 transition-colors group/row"
                         >
                           <div className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-                            <Icon className="w-3.5 h-3.5 text-slate-600 group-hover/row:text-slate-400 transition-colors" />
-                            <span className="text-[11px] text-slate-400 group-hover/row:text-slate-300 transition-colors">
+                            <Icon className="w-3.5 h-3.5 text-stone-400 group-hover/row:text-stone-600 transition-colors" />
+                            <span className="text-[11px] text-stone-500 group-hover/row:text-stone-700 transition-colors">
                               {agent.name}
                             </span>
                           </div>
-                          <span className="text-[8px] text-emerald-400/70 bg-emerald-500/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                          <span className="text-[8px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-emerald-200">
                             ON
                           </span>
                         </div>
@@ -98,16 +98,16 @@ export default function DashboardPage() {
           <ReportGenerator />
 
           {/* Today's Activity */}
-          <div className="p-5 rounded-2xl border border-slate-800/80" style={{ backdropFilter: 'blur(12px)', background: 'rgba(15, 23, 42, 0.5)' }}>
-            <h2 className="text-xs font-bold text-slate-500 mb-4 uppercase tracking-widest">Today&apos;s Activity</h2>
+          <div className="p-5 rounded-2xl border border-stone-200 bg-white shadow-sm">
+            <h2 className="text-xs font-bold text-stone-400 mb-4 uppercase tracking-widest">Today&apos;s Activity</h2>
             <div className="space-y-3">
               {[
-                { label: 'Scans Today', value: '47', color: 'text-slate-200' },
-                { label: 'Auto-Approved', value: '38', color: 'text-emerald-400' },
-                { label: 'Flagged', value: '9', color: 'text-red-400' },
+                { label: 'Scans Today', value: '47', color: 'text-stone-800' },
+                { label: 'Auto-Approved', value: '38', color: 'text-emerald-500' },
+                { label: 'Flagged', value: '9', color: 'text-red-500' },
               ].map((stat, i) => (
                 <div key={i} className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">{stat.label}</span>
+                  <span className="text-xs text-stone-500">{stat.label}</span>
                   <span className={`text-lg font-bold ${stat.color}`}>{stat.value}</span>
                 </div>
               ))}
