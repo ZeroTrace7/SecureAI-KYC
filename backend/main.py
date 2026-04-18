@@ -387,7 +387,44 @@ async def verify_document_endpoint(
         }
         explain_result = generate_explanation(explain_signals)
 
-        # ═══ STAGE 8: Audit Log ═══
+        # ═══ STAGE 8: Compute Document-Aware Agent Verdicts ═══
+        # The frontend should show PASSED/FAILED based on whether the signal
+        # actually contributed meaningfully to the fraud score, NOT on raw
+        # agent thresholds. This aligns the UI with the scorer's logic.
+        _identity_types = ("aadhaar", "pan", "passport")
+        _exif_flag = (exif_result or {}).get("exif_flag", "clean")
+        _ti_score = (text_integrity_result or {}).get("text_integrity_score", 0)
+        _df_score = (deepfake_result or {}).get("deepfake_score")
+        _ss_score = (sig_seal_result or {}).get("signature_seal_score", 0)
+
+        agent_verdicts = {
+            # EXIF: "notable" (no camera data) is normal for e-documents
+            "exif": (
+                "passed" if _exif_flag == "clean"
+                else "passed" if _exif_flag == "notable" and doc_type in _identity_types
+                else "failed"
+            ),
+            # Text Integrity: de-weighted for identity docs (mixed scripts by design)
+            "text_integrity": (
+                "passed" if _ti_score <= 0.25
+                else "passed" if doc_type in _identity_types
+                else "failed"
+            ),
+            # Deepfake: noisy on tiny compressed ID photos
+            "deepfake": (
+                "passed" if _df_score is None
+                else "passed" if _df_score < 0.5
+                else "warning" if doc_type == "aadhaar"
+                else "failed"
+            ),
+            # Signature & Seal: unchanged threshold
+            "signature_seal": (
+                "passed" if _ss_score < 0.25
+                else "failed"
+            ),
+        }
+
+        # ═══ STAGE 9: Audit Log ═══
         elapsed = round(time.time() - start_time, 2)
 
         full_result = {
@@ -409,6 +446,7 @@ async def verify_document_endpoint(
             "blockchain": blockchain_result or {},
             "structured_validation": structured_result or {},
             "cross_validation": cross_val,
+            "agent_verdicts": agent_verdicts,
             "fraud_score": score_result["fraud_score"],
             "decision": score_result["decision"],
             "score_breakdown": score_result["signal_breakdown"],

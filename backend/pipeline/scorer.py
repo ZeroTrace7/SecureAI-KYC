@@ -426,6 +426,49 @@ def compute_fraud_score(signals: dict) -> dict:
                 f"font/layout inconsistency on financial document"
             )
 
+    # ── Missing expected feature penalties ──
+    # If the document type EXPECTS a feature (QR code, face photo) but the
+    # agent couldn't find it, this is itself suspicious. Real government IDs
+    # always have readable QR codes and passport-quality photos.
+    # Unlike anomaly penalties above, these fire when signals are MISSING.
+
+    if profile.get("expects_qr") and signals.get("qr_ocr_match") is None:
+        # Aadhaar expects a readable QR. If we can't decode it:
+        # - Photo taken at bad angle/quality, or
+        # - QR was deliberately removed/obscured, or
+        # - Document is fabricated without a valid UIDAI QR
+        qr_missing_penalty = 15.0
+        fraud_score += qr_missing_penalty
+        critical_penalty_applied = True
+        breakdown["missing_qr_penalty"] = {
+            "raw_signal": 1.0,
+            "weight": 0.0,
+            "contribution": qr_missing_penalty,
+            "detail": "Document type expects QR code but none could be decoded",
+        }
+        logger.warning(
+            f"Scorer: Missing QR penalty on '{doc_type}' — "
+            f"expects_qr=True but qr_ocr_match=None (+{qr_missing_penalty})"
+        )
+
+    if profile.get("expects_face") and signals.get("deepfake_score") is None:
+        # Aadhaar/PAN/Passport expect a face photo. If Haar cascade can't
+        # find ANY face, the photo is either missing, obscured, or non-photographic
+        # (e.g., a cartoon/illustration instead of a real photo).
+        face_missing_penalty = 10.0
+        fraud_score += face_missing_penalty
+        critical_penalty_applied = True
+        breakdown["missing_face_penalty"] = {
+            "raw_signal": 1.0,
+            "weight": 0.0,
+            "contribution": face_missing_penalty,
+            "detail": "Document type expects face photo but none detected",
+        }
+        logger.warning(
+            f"Scorer: Missing face penalty on '{doc_type}' — "
+            f"expects_face=True but deepfake_score=None (+{face_missing_penalty})"
+        )
+
     # ── If any critical expected-feature penalty fired, ensure minimum SUSPICIOUS ──
     # A document that failed an expected forensic check (sig/seal on ID, structured
     # validation or text integrity on payslip) should NEVER be marked GENUINE.

@@ -309,8 +309,8 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
           icon={Eye}
           title="EXIF Metadata Analysis"
           description={`EXIF flag: ${apiData?.exif?.exif_flag || 'clean'}. ${apiData?.exif?.software ? `Editing software detected: ${apiData.exif.software}.` : 'No editing software signatures found.'}`}
-          passed={apiData?.exif?.exif_flag === 'clean'}
-          failed={apiData?.exif?.exif_flag !== 'clean'}
+          passed={(apiData?.agent_verdicts?.exif ?? apiData?.exif?.exif_flag) === 'passed' || (!apiData?.agent_verdicts && apiData?.exif?.exif_flag === 'clean')}
+          failed={apiData?.agent_verdicts?.exif === 'failed' || (!apiData?.agent_verdicts && apiData?.exif?.exif_flag !== 'clean')}
           delay={0.55}
         />
 
@@ -322,11 +322,13 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
             apiData?.deepfake?.deepfake_score !== null && apiData?.deepfake?.deepfake_score !== undefined
               ? (apiData.deepfake.deepfake_score < 0.5
                 ? `Face appears authentic. Confidence: ${((1 - apiData.deepfake.deepfake_score) * 100).toFixed(1)}% real.`
+                : apiData?.agent_verdicts?.deepfake === 'warning'
+                ? `⚠ Noisy result on compressed ID photo. Deepfake probability: ${(apiData.deepfake.deepfake_score * 100).toFixed(1)}% (de-weighted).`
                 : `⚠ Synthetic face artifacts detected. Deepfake probability: ${(apiData.deepfake.deepfake_score * 100).toFixed(1)}%.`)
               : 'No face detected or deepfake analysis was not triggered.'
           }
-          passed={!apiData?.deepfake?.deepfake_score || apiData?.deepfake?.deepfake_score < 0.5}
-          failed={apiData?.deepfake?.deepfake_score && apiData?.deepfake?.deepfake_score >= 0.5}
+          passed={apiData?.agent_verdicts?.deepfake ? apiData.agent_verdicts.deepfake === 'passed' || apiData.agent_verdicts.deepfake === 'warning' : (!apiData?.deepfake?.deepfake_score || apiData?.deepfake?.deepfake_score < 0.5)}
+          failed={apiData?.agent_verdicts?.deepfake ? apiData.agent_verdicts.deepfake === 'failed' : (apiData?.deepfake?.deepfake_score && apiData?.deepfake?.deepfake_score >= 0.5)}
           delay={0.6}
         />
 
@@ -377,12 +379,14 @@ export default function AnalysisResults({ fileName, preview, onReset, apiData, d
           icon={Type}
           title="Text Integrity Analysis"
           description={
-            tiScore > 0.25
+            (apiData?.agent_verdicts?.text_integrity === 'passed' && tiScore > 0.25)
+              ? `Font variance detected but expected for this document type (mixed scripts). Font: ${fontOk ? 'OK' : 'Variable'}, Confidence: ${confOk ? 'OK' : 'Variable'}, Layout: ${layoutOk ? 'OK' : 'Variable'}. Score: ${tiScore.toFixed(3)}.`
+              : tiScore > 0.25
               ? `Anomalies detected — Font: ${fontOk ? 'OK' : '⚠ Inconsistent'}, Confidence: ${confOk ? 'OK' : '⚠ Variable'}, Layout: ${layoutOk ? 'OK' : '⚠ Irregular'}. Score: ${tiScore.toFixed(3)}.`
               : `All checks passed — Font consistency: OK, OCR confidence: Uniform, Spatial layout: Regular. Score: ${tiScore.toFixed(3)}.`
           }
-          passed={tiScore <= 0.25}
-          failed={tiScore > 0.25}
+          passed={apiData?.agent_verdicts?.text_integrity ? apiData.agent_verdicts.text_integrity === 'passed' : tiScore <= 0.25}
+          failed={apiData?.agent_verdicts?.text_integrity ? apiData.agent_verdicts.text_integrity === 'failed' : tiScore > 0.25}
           delay={0.8}
         />
 
