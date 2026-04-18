@@ -49,9 +49,9 @@ DOC_TYPE_PROFILE = {
         "weight_mods": {
             "qr_ocr_mismatch": 1.3,   # QR-OCR is the kill feature for Aadhaar
             "ela": 1.0,
-            "text_integrity": 0.6,     # Mixed script (Devanagari+Latin) = naturally variable
+            "text_integrity": 0.3,     # e-Aadhaar has 3 scripts + 5 font sizes by design — very low weight
             "signature_seal": 1.5,     # UIDAI embossed seal + authorized signatory — primary signal
-            "deepfake": 0.3,           # Noisy on small compressed ID photos — secondary signal
+            "deepfake": 0.15,          # Tiny compressed ID photos (~80x100px) produce extremely noisy results
             "exif": 1.0,
             "blockchain": 1.0,
             "structured_validation": 0.5,  # Secondary for IDs
@@ -66,7 +66,7 @@ DOC_TYPE_PROFILE = {
         "weight_mods": {
             "qr_ocr_mismatch": 0.0,   # PAN cards don't have QR
             "ela": 1.0,
-            "text_integrity": 0.6,     # Mixed script, multiple fonts
+            "text_integrity": 0.3,     # PAN has mixed Hindi/English scripts by design — very low weight
             "signature_seal": 1.2,     # PAN has a signature line + Income Tax Dept emblem
             "deepfake": 0.8,           # Face photo matters but model is noisy on IDs
             "exif": 1.0,
@@ -295,7 +295,7 @@ def compute_fraud_score(signals: dict) -> dict:
         if exif_flag == "suspicious":
             exif_signal = 1.0
         elif exif_flag == "notable":
-            exif_signal = 0.15  # Most legitimate docs lack EXIF (scans, DigiLocker, screenshots)
+            exif_signal = 0.05  # Informational only — e-Aadhaar/DigiLocker/scans naturally lack EXIF
         else:
             exif_signal = 0.0
         weighted_sum += exif_signal * effective_exif_weight

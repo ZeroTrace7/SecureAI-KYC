@@ -254,6 +254,27 @@ def _detect_pasted_elements(img) -> dict:
         mean_edge = np.mean(edge_magnitude)
         max_edge = np.max(edge_magnitude)
 
+        # ── Born-digital detection ──
+        # In a scanned/photographed document, mean edge strength is LOW (~10-25)
+        # because paper texture and camera blur soften everything.
+        # In a born-digital PDF (e-Aadhaar, DigiLocker), mean edge strength is
+        # HIGH (>35) because ALL elements (text, logos, borders) are digitally crisp.
+        # Pasted elements are only suspicious when sharp AGAINST a soft background.
+        if mean_edge > 35:
+            logger.info(
+                f"Signature/Seal Agent: Born-digital document detected "
+                f"(mean_edge={mean_edge:.1f} > 35) — skipping edge forensics"
+            )
+            return {
+                "edge_consistent": True,
+                "edge_ratio": round(float(max_edge / mean_edge if mean_edge > 0 else 0), 2),
+                "percentile_ratio": 0.0,
+                "detail": (
+                    f"Edge analysis: born-digital document detected "
+                    f"(mean_edge={mean_edge:.1f}) — uniform sharpness is expected"
+                ),
+            }
+
         # Edge ratio: how much sharper are the sharpest edges vs. average
         edge_ratio = max_edge / mean_edge if mean_edge > 0 else 0
 
